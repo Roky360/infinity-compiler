@@ -1,0 +1,3 @@
+C:/Users/edens/Documents/programming/projects/.School/infinity_compiler/cmake-build-debug/CMakeFiles/infinity_compiler.dir
+C:/Users/edens/Documents/programming/projects/.School/infinity_compiler/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/edens/Documents/programming/projects/.School/infinity_compiler/cmake-build-debug/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,43 @@
+import "infinity.in";
+define N 4
+/- declaring the starting point of the application.
+ - if this is omitted, the default is "main".
+-/
+start main;
+
+// if return type not specified, default is void
+func main(int argc, Array<string> argv) -> int {
+    int x = (50 + 7) / 3 - 1 / (8 - 3);
+    string s = "hello world";
+    bool b = true;
+    Array<int> arr = [1, 2, 3];
+    Array<int> arr = [1, 2, 3];
+
+    if (x > 4) {
+        x = 0;
+    } else if (x == 4) {
+        x = 1;
+    } else {
+        x = 10;
+    }
+
+    while (i < x) {
+        // ...
+    }
+
+    loop 3 times {
+    loop i: 3 times {
+    loop i: 1 to 10 times {
+        // like a for loop that runs `x` times
+        // another option for a short for-loop is the second line that assigns the loop counter to a variable
+        // third option is a custom range to the loop counter (all values must be integers)
+    }
+
+    // THINK HOW TO IMPLEMENT PRINT
+    print(x);
+    // THINK HOW TO IMPLEMENT INPUT
+    // like c or like python
+    input(max_num_of_characters);
+
+    return 0;
+}

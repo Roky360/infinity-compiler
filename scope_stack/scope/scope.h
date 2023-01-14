@@ -1,0 +1,8 @@
+#ifndef INFINITY_COMPILER_SCOPE_H
+#define INFINITY_COMPILER_SCOPE_H
+
+typedef struct {
+
+} Scope;
+
+#endif //INFINITY_COMPILER_SCOPE_H

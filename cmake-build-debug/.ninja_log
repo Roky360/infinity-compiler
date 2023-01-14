@@ -1,0 +1,21 @@
+# ninja log v5
+5	126	6954071967519404	CMakeFiles/infinity_compiler.dir/main.c.obj	34563fb3e343bd06
+161	355	6954136333686177	infinity_compiler.exe	c8678007c55bdf4
+6	108	6953469797915066	CMakeFiles/infinity_compiler.dir/token/token.c.obj	24317b61ee5467c4
+4	129	6952225877520732	CMakeFiles/infinity_compiler.dir/list/list.c.obj	4d75d2ec16399ed
+15	121	6953455633126428	CMakeFiles/infinity_compiler.dir/types/types.c.obj	9a84605246308a8f
+5	214	6954081524835319	CMakeFiles/infinity_compiler.dir/test_evals/expression_evaluator.c.obj	fc833743d06a9b59
+11	117	6953455633126428	CMakeFiles/infinity_compiler.dir/variable/variable.c.obj	485834efab02ec9d
+56	220	6950595115549667	CMakeFiles/infinity_compiler.dir/io/io.c.obj	2b904c7178f2c713
+13	147	6954123138559781	CMakeFiles/infinity_compiler.dir/ast/ast.c.obj	7b19ff3900851cd1
+10	87	6953436823996923	CMakeFiles/infinity_compiler.dir/config/globals.c.obj	52c936a0f7eef01a
+5	142	6954135433346217	CMakeFiles/infinity_compiler.dir/compiler/compiler.c.obj	eb839f2684c0bbd3
+5	130	6954076044637437	CMakeFiles/infinity_compiler.dir/logging/logging.c.obj	65f4da984f2fc1a4
+28	178	6954123139061753	CMakeFiles/infinity_compiler.dir/semantic_analyzer/semantic_analyzer.c.obj	cbaa84b8a849beb3
+18	167	6954123138971658	CMakeFiles/infinity_compiler.dir/parser/parser.c.obj	28b34b8b96489668
+6	160	6954136331785335	CMakeFiles/infinity_compiler.dir/lexer/lexer.c.obj	5b48ff2c15624e71
+0	114	6954226602263882	build.ninja	f076bb5c58cc6ed5
+34	156	6954123138849696	CMakeFiles/infinity_compiler.dir/symbol_table/symbol_entry/symbol_entry.c.obj	e7aa1502127708bd
+4	116	6953271088264223	CMakeFiles/infinity_compiler.dir/symbol_table/semantic_table.c.obj	784629e1bc7baf0c
+217	272	6953248018421488	CMakeFiles/infinity_compiler.dir/scope_stack/scope/scope.c.obj	fef6c80402d53efd
+24	149	6954123138660210	CMakeFiles/infinity_compiler.dir/symbol_table/symbol_table.c.obj	31af34fdba52f409

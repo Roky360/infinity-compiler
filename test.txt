@@ -1,0 +1,8 @@
+start main;
+
+func main(int argc, string argv) -> int {
+    int x = 'd';
+    x = 2;
+
+    return 1;
+}
