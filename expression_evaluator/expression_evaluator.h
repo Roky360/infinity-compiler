@@ -48,6 +48,6 @@ void infix_to_postfix(List *infix, List *postfix);
 
 double evaluate_postfix(List *postfix);
 
-int evaluate(const List *expression, double *res);
+int evaluate_expression(const List *expression, double *res);
 
 #endif //INFINITY_COMPILER_EXPRESSION_EVALUATOR_H

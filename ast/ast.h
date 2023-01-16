@@ -77,6 +77,7 @@ typedef struct {
 
 /**
 \Loop
+ Perform code block a certain amount of times
 */
 typedef struct {
     int start;

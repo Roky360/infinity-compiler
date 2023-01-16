@@ -4,10 +4,10 @@
 typedef enum TokenType {
     /** Values */
     ID,
-    INT,    // integer constant value_expr
-    CHAR,
-    STRING, // string value_expr
-    DOUBLE,
+    INT,    // integer literal
+    CHAR,   // character literal
+    STRING, // string literal
+    DOUBLE, // floating point number literal
 //    BOOL,
     /** Keywords */
     START_KEYWORD,
@@ -63,7 +63,7 @@ typedef enum TokenType {
     EOF_TOKEN,
 } TokenType;
 
-typedef struct TokenStruct {
+typedef struct Token {
     TokenType type;
     char *value;
 } Token;

@@ -1,98 +1,44 @@
 #include "symbol_table.h"
 #include "../logging/logging.h"
+#include "../config/globals.h"
+#include "../io/io.h"
 
 #include <stdlib.h>
-#include <string.h>
 
 SymbolTable *init_symbol_table() {
     SymbolTable *table = malloc(sizeof(SymbolTable));
     if (!table)
         throw_memory_allocation_error(COMPILER);
-    table->items = calloc(TABLE_SIZE, sizeof(SymbolEntry *));
-    if (!table->items)
-        throw_memory_allocation_error(COMPILER);
-    table->capacity = TABLE_SIZE;
+    table->table = init_hash_table(SYMBOL_TABLE_SIZE, symbol_dispose);
+    table->symbols = init_list(sizeof(Symbol *));
 
     return table;
 }
 
-/**
- * Uses the Fowler–Noll–Vo hash function.
-*/
-unsigned int hash_func(char *id) {
-    size_t hash = FNV_offset_basis;
-    while (*id) {
-        hash *= FNV_prime;
-        hash ^= *id;
-        id++;
-    }
-    // Incorporate the scope id into the hash calculation
-//    hash *= FNV_prime;
-//    hash ^= scope_id;
-    return hash % TABLE_SIZE;
+char *get_symbol_id(char *symbol_id, int scope_id) {
+    char *id;
+    alsprintf(&id, "%s%d", symbol_id, scope_id);
+    return id;
 }
 
-SymbolEntry *symbol_table_lookup(SymbolTable *table, char *id) {
-    SymbolEntry *e = table->items[hash_func(id)];
-    while (e) {
-        if (strcmp(e->id, id) == 0)
-            return e;
-        e = e->next;
-    }
-    return NULL;
+Symbol *symbol_table_lookup(SymbolTable *table, char *id) {
+    return (Symbol *) hash_table_lookup(table->table, id);
 }
 
 // returns if insertion was successful
 // if an entry with the same id exists, will return false (0)
 int symbol_table_insert(SymbolTable *table, SymbolType type, char *id, SymbolValue value, AstNode *initializer) {
-    SymbolEntry *new_entry, *e;
-    unsigned int idx;
-    if (symbol_table_lookup(table, id) != NULL) {
-        return 0;
-    }
-
-    idx = hash_func(id);
-    new_entry = init_symbol_entry(type, id, value, initializer);
-    e = table->items[idx];
-    if (e == NULL) {
-        table->items[idx] = new_entry;
-    } else {
-        while (e->next != NULL)
-            e = e->next;
-        e->next = new_entry;
-    }
-
-    return 1;
+    return hash_table_insert(table->table, id, init_symbol(type, value, initializer));
 }
 
-int symbol_table_delete(SymbolTable *table, char *id) {
-    SymbolEntry *e, *prev;
-    if (symbol_table_lookup(table, id) == NULL) {
-        return 0;
-    }
-
-    e = table->items[hash_func(id)];
-    if (e->next) {
-        prev = e;
-        while (strcmp(e->id, id) != 0) {
-            prev = e;
-            e = e->next;
-        }
-        prev->next = e->next;
-    }
-    symbol_entry_dispose(e);
-
-    return 1;
+// if the item does not exist, return 0
+// if the deletion was successful, return 1
+int symbol_table_remove(SymbolTable *table, char *id) {
+    return hash_table_remove(table->table, id);
 }
 
 void symbol_table_dispose(SymbolTable *table) {
-    int i;
-    SymbolEntry *e;
-    for (i = 0; i < TABLE_SIZE; i++) {
-        e = table->items[i];
-        if (e) {
-            symbol_entry_dispose_list(e);
-        }
-    }
+    hash_table_dispose(table->table);
+    list_dispose(table->symbols);
     free(table);
 }

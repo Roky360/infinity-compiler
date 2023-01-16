@@ -1,7 +1,9 @@
 #include "semantic_analyzer.h"
+#include "../symbol_table/symbol/symbol.h"
 #include "../logging/logging.h"
 #include "../config/globals.h"
 #include "../io/io.h"
+#include "../config/table_initializers.h"
 
 #include <stdlib.h>
 
@@ -11,16 +13,20 @@ SemanticAnalyzer *init_semantic_analyzer(AstNode *root) {
         throw_memory_allocation_error(SEMANTIC_ANALYZER);
 
     analyzer->table = init_symbol_table();
+    analyzer->scope_stack = init_scope_stack();
     analyzer->root = root;
     analyzer->root_func_name = DEFAULT_ROOT_FUNCTION_NAME;
+    analyzer->error_count = 0;
 
     return analyzer;
 }
 
-// This assumes that the root node is a compound
-void semantic_analyze_tree(SemanticAnalyzer *analyzer) {
+/* This assumes that the root node is a compound
+ * returns the number of errors found
+ * */
+int semantic_analyze_tree(SemanticAnalyzer *analyzer) {
     char *errMsg;
-    SymbolEntry *starting_point_entry;
+    Symbol *starting_point_entry;
 
     if (analyzer->root->type != AST_COMPOUND) {
         fprintf(stderr, "Expecting a compound node as the root node of the application\n");
@@ -34,9 +40,13 @@ void semantic_analyze_tree(SemanticAnalyzer *analyzer) {
     starting_point_entry = symbol_table_lookup(analyzer->table, analyzer->root_func_name);
     if (!starting_point_entry) {
         alsprintf(&errMsg, "Starting point missing, \"%s\" is not defined", analyzer->root_func_name);
-        log_error(SEMANTIC_ANALYZER, errMsg);
+        log_debug(SEMANTIC_ANALYZER, errMsg);
+        analyzer->error_count += 1;
+    } else {
+        analyzer->starting_point = starting_point_entry->initializer;
     }
-    analyzer->starting_point = starting_point_entry->initializer;
+
+    return analyzer->error_count;
 }
 
 /**
@@ -48,11 +58,11 @@ int compare_types(DataType type_a, DataType type_b) {
             (type_a == TYPE_INT || type_a == TYPE_DOUBLE || type_a == TYPE_CHAR || type_a == TYPE_BOOL));
 }
 
-void semantic_analyze_start_statement(SemanticAnalyzer *analyzer, AstNode *node) {
+void semantic_analyze_start_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
     analyzer->root_func_name = node->data.start_expr.starting_point;
 }
 
-void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node) {
+void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
     char *errMsg;
     int insertion_successful;
     insertion_successful = symbol_table_insert(analyzer->table,
@@ -78,7 +88,7 @@ void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node) {
     }
 }
 
-void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *node) {
+void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
     char *errMsg;
     int insertion_successful;
     DataType var_type, value_type;
@@ -124,45 +134,56 @@ void semantic_analyze_block(SemanticAnalyzer *analyzer, List *block, AstNode *pa
 }
 
 void semantic_analyze_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
+    char *id_ptr;
+    void (*analyzer_func)(SemanticAnalyzer *, AstNode *, AstNode *);
+
     // alert for unreachable code
     if (parent->type == AST_FUNCTION_DEFINITION &&
         symbol_table_lookup(analyzer->table, parent->data.function_definition.func_name)->value.func_symbol.returned) {
         // TODO: link this warning to the better logging system
         log_debug(SEMANTIC_ANALYZER, "Unreachable code");
+        printf("%d\n", node->type);
     }
-    switch (node->type) {
-        case AST_START_EXPRESSION:
-            semantic_analyze_start_statement(analyzer, node);
-            break;
-        case AST_VARIABLE_DECLARATION:
-            semantic_analyze_variable_declaration(analyzer, node);
-            break;
-        case AST_ASSIGNMENT:
-            semantic_analyze_assignment(analyzer, node);
-            break;
-        case AST_FUNCTION_DEFINITION:
-            semantic_analyze_function(analyzer, node);
-            break;
-        case AST_FUNCTION_CALL:
-            // not supported yet
-            break;
-        case AST_IF_STATEMENT:
-            semantic_analyze_if_statement(analyzer, node, parent);
-            break;
-        case AST_LOOP:
-            semantic_analyze_loop_statement(analyzer, node, parent);
-            break;
-        case AST_RETURN_STATEMENT:
-            semantic_analyze_return_statement(analyzer, node, parent);
-            break;
-        default:
-            break;
+
+    analyzer_func = hash_table_lookup(ast_type_to_analyzer_table, alsprintf(&id_ptr, "%d", node->type));
+    free(id_ptr);
+    if (analyzer_func) {
+        analyzer_func(analyzer, node, parent);
     }
+
+//    switch (node->type) {
+//        case AST_START_EXPRESSION:
+//            semantic_analyze_start_statement(analyzer, node, parent);
+//            break;
+//        case AST_VARIABLE_DECLARATION:
+//            semantic_analyze_variable_declaration(analyzer, node, parent);
+//            break;
+//        case AST_ASSIGNMENT:
+//            semantic_analyze_assignment(analyzer, node, parent);
+//            break;
+//        case AST_FUNCTION_DEFINITION:
+//            semantic_analyze_function(analyzer, node, parent);
+//            break;
+//        case AST_FUNCTION_CALL:
+//            // not supported yet
+//            break;
+//        case AST_IF_STATEMENT:
+//            semantic_analyze_if_statement(analyzer, node, parent);
+//            break;
+//        case AST_LOOP:
+//            semantic_analyze_loop_statement(analyzer, node, parent);
+//            break;
+//        case AST_RETURN_STATEMENT:
+//            semantic_analyze_return_statement(analyzer, node, parent);
+//            break;
+//        default:
+//            break;
+//    }
 }
 
-void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node) {
+void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
     char *errMsg;
-    SymbolEntry *target_var;
+    Symbol *target_var;
     DataType src_type, dst_type;
     target_var = symbol_table_lookup(analyzer->table, node->data.assignment.dst_variable->value);
     // if the target var is undefined
@@ -250,5 +271,7 @@ void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node
 }
 
 void semantic_analyzer_dispose(SemanticAnalyzer *analyzer) {
+    symbol_table_dispose(analyzer->table);
+    scope_stack_dispose(analyzer->scope_stack);
     free(analyzer);
 }

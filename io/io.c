@@ -78,14 +78,14 @@ char *get_file_extension(char *filename) {
     return strdup(p + 1);
 }
 
-int alsprintf(char **stream, char *format, ...) {
-    int res;
+char *alsprintf(char **stream, char *format, ...) {
+//    int res;
     va_list args;
     va_start(args, format);
 
     *stream = malloc(vsnprintf(NULL, 0, format, args) + 1);
-    res = vsprintf(*stream, format, args);
+    /*res =*/ vsprintf(*stream, format, args);
 
     va_end(args);
-    return res;
+    return *stream;
 }

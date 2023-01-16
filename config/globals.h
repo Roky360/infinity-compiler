@@ -3,11 +3,16 @@
 
 #include "../list/list.h"
 #include "../token/token.h"
+#include "../hash_table/hash_table.h"
 
 //#define _GNU_SOURCE
 #define INF_DEBUG
 #define EXTENSION "txt"
 #define DEFAULT_ROOT_FUNCTION_NAME "main"
+
+/** Defines */
+#define SYMBOL_TABLE_SIZE 199
+#define SCOPE_SIZE 23
 
 /** Macros */
 #define MAX(a, b) ((a) > (b) ? (a) : (b))

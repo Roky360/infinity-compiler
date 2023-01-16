@@ -4,7 +4,7 @@
 #include "../list/list.h"
 #include "../token/token.h"
 
-typedef enum {
+typedef enum DataType {
     TYPE_VOID = VOID_KEYWORD,
     TYPE_INT = INT_KEYWORD,
     TYPE_CHAR = CHAR_KEYWORD,
@@ -13,7 +13,7 @@ typedef enum {
     TYPE_BOOL = BOOL_KEYWORD,
 } DataType;
 
-typedef union {
+typedef union Value {
     int integer_value;
     char char_value;
     char *string_value;
@@ -22,7 +22,7 @@ typedef union {
     void *void_value; // if void - initialize this to NULL
 } Value;
 
-typedef struct {
+typedef struct LiteralValue {
     DataType type;
     Value value;
 } LiteralValue;
@@ -31,7 +31,7 @@ typedef struct {
 An `Expression` represents an expression with or without variables.
 Like: 5+7 or x*2-3
 */
-typedef struct {
+typedef struct Expression {
     List *tokens;
     LiteralValue *value;
     int contains_variables; // contains variables, like: 2 * x + 3

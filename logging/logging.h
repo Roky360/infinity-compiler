@@ -3,7 +3,7 @@
 
 #include "../lexer/lexer.h"
 
-typedef enum {
+typedef enum Caller {
     COMPILER,
     LEXER,
     PARSER,

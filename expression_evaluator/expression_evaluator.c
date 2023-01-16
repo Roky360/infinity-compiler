@@ -260,6 +260,8 @@ double evaluate_postfix(List *postfix) {
                     exit(1);
                 }
                 result = a / b;
+            } else if (*currToken->value.op == '^') {
+                result = pow(a, b);
             } else if (*currToken->value.op == '%') {
                 result = fmod(a, b);
             } else if (*currToken->value.op == '!') {
@@ -308,10 +310,10 @@ double evaluate_postfix(List *postfix) {
     return result;
 }
 
-/* expression is list of tokens
+/* expression is a list of tokens
  * Returns if the expression can be parsed, or it contains variables.
  * */
-int evaluate(const List *expression, double *res) {
+int evaluate_expression(const List *expression, double *res) {
     // TODO: if the expression contains vars, update the containing_vars field in the expression instance
     List *infix, *postfix;
     infix = init_list(sizeof(ArithmeticToken *));

@@ -1,6 +1,7 @@
 #include "logging.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 char *caller_type_to_str(Caller caller) {
     switch (caller) {

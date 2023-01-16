@@ -2,7 +2,8 @@ start main;
 
 func main(int argc, string argv) -> int {
     int x = 'd';
-    x = 2;
+    //x = 2 + x / 5;         // x 2 x 5 / + =
+    //x = 5*2^(4! / 8 - 2);   // x=4
 
     return 1;
 }

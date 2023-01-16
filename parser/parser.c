@@ -2,7 +2,8 @@
 #include "../config/globals.h"
 #include "../logging/logging.h"
 #include "../io/io.h"
-#include "../test_evals/expression_evaluator.h"
+#include "../expression_evaluator/expression_evaluator.h"
+#include "../config/table_initializers.h"
 #include <stdio.h>
 
 Parser *init_parser(Lexer *lexer) {
@@ -84,7 +85,7 @@ AstNode *parser_parse_expression(Parser *parser, Expression *expression) {
         }
     } else {
         // parse expression
-        if (evaluate(expression->tokens, &res)) {
+        if (evaluate_expression(expression->tokens, &res)) {
             expr_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {.double_value = res});
         } else {
             // TODO: how to parse expressions with variables?
@@ -140,30 +141,44 @@ void parser_parse_block(Parser *parser, List *block) {
 }
 
 AstNode *parser_parse_statement(Parser *parser) {
-    char *errMsg;
-    switch (parser->token->type) {
-        case START_KEYWORD:
-            return parser_parse_start_expression(parser);
-        case ID:
-            return parser_parse_id(parser);
-        case FUNC_KEYWORD:
-            return parser_parse_function_definition(parser);
-        case INT_KEYWORD:
-        case CHAR_KEYWORD:
-        case BOOL_KEYWORD:
-        case STRING_KEYWORD:
-            return parser_parse_var_declaration(parser);
-        case IF_KEYWORD:
-            return parser_parse_if_statement(parser);
-        case LOOP_KEYWORD:
-            return parser_parse_loop(parser);
-        case RETURN_KEYWORD:
-            return parser_parse_return_statement(parser);
-        default:
-            alsprintf(&errMsg, "Expected an expression, got %s", token_type_to_str(parser->token->type));
-            throw_exception_with_trace(PARSER, parser->lexer, errMsg);
-            return NULL;
+    char *errMsg, *id_ptr;
+    AstNode *(*parser_func)(Parser *);
+
+    parser_func = hash_table_lookup(statement_to_parser_table, alsprintf(&id_ptr, "%d", parser->token->type));
+    free(id_ptr);
+    if (parser_func) {
+        // call the right parsing function
+        return parser_func(parser);
+    } else {
+        // print error message
+        alsprintf(&errMsg, "Expected an expression, got %s", token_type_to_str(parser->token->type));
+        throw_exception_with_trace(PARSER, parser->lexer, errMsg);
+        return NULL;
     }
+
+//    switch (parser->token->type) {
+//        case START_KEYWORD:
+//            return parser_parse_start_expression(parser);
+//        case ID:
+//            return parser_parse_id(parser);
+//        case FUNC_KEYWORD:
+//            return parser_parse_function_definition(parser);
+//        case INT_KEYWORD:
+//        case CHAR_KEYWORD:
+//        case BOOL_KEYWORD:
+//        case STRING_KEYWORD:
+//            return parser_parse_var_declaration(parser);
+//        case IF_KEYWORD:
+//            return parser_parse_if_statement(parser);
+//        case LOOP_KEYWORD:
+//            return parser_parse_loop(parser);
+//        case RETURN_KEYWORD:
+//            return parser_parse_return_statement(parser);
+//        default:
+//            alsprintf(&errMsg, "Expected an expression, got %s", token_type_to_str(parser->token->type));
+//            throw_exception_with_trace(PARSER, parser->lexer, errMsg);
+//            return NULL;
+//    }
 }
 
 AstNode *parser_parse_id(Parser *parser) {
@@ -325,8 +340,8 @@ AstNode *parser_parse_if_statement(Parser *parser) {
     node->data.if_statement.condition->tokens = condition;
     // TODO: change the type to int   ->                                   \/
     node->data.if_statement.condition->value = init_literal_value(TYPE_DOUBLE, (Value) {});
-    if (evaluate(node->data.if_statement.condition->tokens,
-                 &node->data.if_statement.condition->value->value.double_value)) {
+    if (evaluate_expression(node->data.if_statement.condition->tokens,
+                            &node->data.if_statement.condition->value->value.double_value)) {
         // TODO: move this to the analyzer
         alsprintf(&warning, "This if statement is always %s",
                   node->data.if_statement.condition->value->value.double_value ? "true" : "false");

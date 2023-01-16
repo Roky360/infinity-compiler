@@ -15,6 +15,8 @@ void compiler_compile(char *src) {
     Parser *parser;
     AstNode *root;
     SemanticAnalyzer *analyzer;
+    int error_count;
+    char *msg;
     init_globals();
     lexer = init_lexer(src);
     parser = init_parser(lexer);
@@ -23,7 +25,11 @@ void compiler_compile(char *src) {
     root = parser_parse(parser);
     // analyze tree
     analyzer = init_semantic_analyzer(root);
-    semantic_analyze_tree(analyzer);
+    error_count = semantic_analyze_tree(analyzer);
+    if (error_count > 0) {
+        alsprintf(&msg, "Found %d error%s", error_count, error_count > 1 ? "s" : "");
+        log_error(COMPILER, msg);
+    }
     // generate code
 
 //     Token *tok;
@@ -59,14 +65,11 @@ void compiler_compile_file(const char *filename) {
     puts("");
     // Print done message with time elapsed
     end = clock();
-    elapsed_time_ms = (double)(end - start) / CLOCKS_PER_SEC * 1000;
-    if (elapsed_time_ms >= 100)
-    {
+    elapsed_time_ms = (double) (end - start) / CLOCKS_PER_SEC * 1000;
+    if (elapsed_time_ms >= 100) {
         alsprintf(&done_msg, "Compiled successfully in %.1f seconds", elapsed_time_ms / 1000);
-    }
-    else
-    {
-        alsprintf(&done_msg, "Compiled successfully in %d ms", (int)elapsed_time_ms);
+    } else {
+        alsprintf(&done_msg, "Compiled successfully in %d ms", (int) elapsed_time_ms);
     }
     log_debug(COMPILER, done_msg);
 #endif

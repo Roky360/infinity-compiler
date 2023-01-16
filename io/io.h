@@ -9,6 +9,6 @@ char *read_file(const char *filename);
 
 char *get_file_extension(char *filename);
 
-int alsprintf(char **stream, char *format, ...);
+char *alsprintf(char **stream, char *format, ...);
 
 #endif //INFINITY_COMPILER_IO_H

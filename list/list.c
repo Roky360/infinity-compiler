@@ -62,7 +62,7 @@ void *list_pop(List *list) {
 void list_insert(List *list, int idx, void *item) {
     if (idx > list->size - 1 || idx < 0) {
         printf("List index %zu out of range: 0..%zu\n", idx, list->size - 1);
-         exit(1);
+        exit(1);
 //        return;
     }
 

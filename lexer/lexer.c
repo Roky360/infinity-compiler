@@ -148,7 +148,7 @@ Token *lexer_parse_char_token(Lexer *lexer) {
         throw_memory_allocation_error(LEXER);
 
     lexer_forward(lexer);
-    val = (char[]) {lexer->c, 0};
+    val[0] = lexer->c;
     lexer_forward(lexer);
     if (lexer->c != '\'') {
         throw_exception_with_trace(LEXER, lexer, "Char literal should contain only one character");
