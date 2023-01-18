@@ -62,9 +62,9 @@ void compiler_compile_file(const char *filename) {
     free(src);
 
 #ifdef INF_DEBUG
-    puts("");
     // Print done message with time elapsed
     end = clock();
+    puts("");
     elapsed_time_ms = (double) (end - start) / CLOCKS_PER_SEC * 1000;
     if (elapsed_time_ms >= 100) {
         alsprintf(&done_msg, "Compiled successfully in %.1f seconds", elapsed_time_ms / 1000);

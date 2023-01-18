@@ -144,7 +144,7 @@ AstNode *parser_parse_statement(Parser *parser) {
     char *errMsg, *id_ptr;
     AstNode *(*parser_func)(Parser *);
 
-    parser_func = hash_table_lookup(statement_to_parser_table, alsprintf(&id_ptr, "%d", parser->token->type));
+    parser_func = hash_table_lookup(statement_to_parser_map, alsprintf(&id_ptr, "%d", parser->token->type));
     free(id_ptr);
     if (parser_func) {
         // call the right parsing function

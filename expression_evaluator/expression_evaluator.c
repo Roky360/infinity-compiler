@@ -1,11 +1,12 @@
 #include "expression_evaluator.h"
 #include "../logging/logging.h"
 #include "../io/io.h"
+#include "../hash_table/hash_table.h"
+#include "../config/table_initializers.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 char *print_ar_token(const void *item) {
     ArithmeticToken *t = (ArithmeticToken *) item;
@@ -35,23 +36,8 @@ ArithmeticToken *init_arithmetic_token_with(ArithmeticTokenType type, Arithmetic
     return tok;
 }
 
-int is_operator(TokenType type) {
-    return type == ADD_OP
-           || type == SUB_OP
-           || type == MUL_OP
-           || type == DIVIDE_OP
-           || type == POWER_OP
-           || type == MODULUS_OP
-           || type == OR_OPERATOR_KEYWORD
-           || type == AND_OPERATOR_KEYWORD
-           || type == NOT_OPERATOR_KEYWORD
-           || type == EQUALS
-           || type == NOT_EQUAL
-           || type == GRATER_THAN
-           || type == GRATER_EQUAL
-           || type == LOWER_THAN
-           || type == LOWER_EQUAL
-           || type == FACTORIAL_OP;
+int is_operator(char *op) {
+    return hash_table_lookup(precedence_map, op) != NULL;
 }
 
 int is_parentheses(TokenType type) {
@@ -59,11 +45,17 @@ int is_parentheses(TokenType type) {
 }
 
 int get_precedence(char *op) {
-    if (strstr("^!", op) != NULL) {
+    char *precedence = hash_table_lookup(precedence_map, op);
+    if (precedence) {
+        return atoi(precedence);
+    } else {
+        return -1;
+    }
+    /*if (strstr("^!", op) != NULL) {
         return 8;
     } else if (strstr("not", op) != NULL) {
         return 7;
-    } else if (strstr("*/%%", op) != NULL) {
+    } else if (strstr("/*%%", op) != NULL) {
         return 6;
     } else if (strstr("+-", op) != NULL) {
         return 5;
@@ -77,27 +69,12 @@ int get_precedence(char *op) {
         return 1;
     } else {
         return -1;
-    }
+    }*/
 }
 
 int is_right_associative(char *op) {
     // power and not operators are right associative
-    return strstr("^not", op) != NULL;
-}
-
-double _fact(double x) {
-    return (x <= 1) ? 1 : x * _fact(x - 1);
-}
-
-double factorial(double x) {
-    if (floor(x) != x) {
-        fprintf(stderr, "Trying to perform factorial on a float number\n");
-        exit(1);
-    } else if (x < 0) {
-        fprintf(stderr, "Trying to perform factorial on a negative number\n");
-        exit(1);
-    }
-    return _fact(x);
+    return strstr(OP_POW OP_NOT, op) != NULL;
 }
 
 // returns if the expression can be parsed to a constant value (1), or it contains variables (0)
@@ -135,7 +112,7 @@ int parse_tokens(const List *expression, List *tokens) {
                 should_close_paren = 0;
             }
             prev_token_type = NUMBER;
-        } else if (is_operator(token->type)) {
+        } else if (is_operator(token->value)) {
             // Operator or parenthesis arithmeticToken
             arithmeticToken->type = OPERATOR;
             arithmeticToken->value.op = token->value;
@@ -228,18 +205,19 @@ void infix_to_postfix(List *infix, List *postfix) {
 
 double evaluate_postfix(List *postfix) {
     List *stack;
-    ArithmeticToken *currToken, *result_token, *left_token, *right_token;
+    ArithmeticToken *curr_token, *result_token, *left_token, *right_token;
     int i;
     double a, b, result;
+    double (*applier_func)(double, double, char *, char *);
     stack = init_list(sizeof(ArithmeticToken *));
 
     for (i = 0; i < postfix->size; i++) {
-        currToken = postfix->items[i];
+        curr_token = postfix->items[i];
         result_token = init_empty_arithmetic_token();
 
-        if (currToken->type == NUMBER) {
-            list_push(stack, currToken);
-        } else if (currToken->type == OPERATOR) {
+        if (curr_token->type == NUMBER) {
+            list_push(stack, curr_token);
+        } else if (curr_token->type == OPERATOR) {
             right_token = list_pop(stack);
             left_token = list_pop(stack);
             if (!right_token || !left_token) {
@@ -248,52 +226,61 @@ double evaluate_postfix(List *postfix) {
             }
             b = right_token->value.number;
             a = left_token->value.number;
-            if (*currToken->value.op == '+') {
+
+            applier_func = hash_table_lookup(operator_to_applier_function_map, curr_token->value.op);
+            if (applier_func) {
+                result = applier_func(a, b, left_token->value.op, right_token->value.op);
+            } else {
+                fprintf(stderr, "Invalid operator: %s\n", curr_token->value.op);
+                exit(1);
+            }
+
+            /*if (*curr_token->value.op == '+') {
                 result = a + b;
-            } else if (*currToken->value.op == '-') {
+            } else if (*curr_token->value.op == '-') {
                 result = a - b;
-            } else if (*currToken->value.op == '*') {
+            } else if (*curr_token->value.op == '*') {
                 result = a * b;
-            } else if (*currToken->value.op == '/') {
+            } else if (*curr_token->value.op == '/') {
                 if (b == 0) {
                     fprintf(stderr, "Attempting to divide by zero (%.2f / 0)\n", a);
                     exit(1);
                 }
                 result = a / b;
-            } else if (*currToken->value.op == '^') {
+            } else if (*curr_token->value.op == '^') {
                 result = pow(a, b);
-            } else if (*currToken->value.op == '%') {
+            } else if (*curr_token->value.op == '%') {
                 result = fmod(a, b);
-            } else if (*currToken->value.op == '!') {
+            } else if (*curr_token->value.op == '!') {
                 if (strcmp(right_token->value.op, FACT_OP_PLACEHOLDER) != 0) {
                     fprintf(stderr, "Invalid expression\n");
                     exit(1);
                 }
                 result = factorial(a);
-            } else if (!strcmp(currToken->value.op, "and")) {
+            } else if (!strcmp(curr_token->value.op, "and")) {
                 result = a && b;
-            } else if (!strcmp(currToken->value.op, "or")) {
+            } else if (!strcmp(curr_token->value.op, "or")) {
                 result = a || b;
-            } else if (!strcmp(currToken->value.op, "not")) {
+            } else if (!strcmp(curr_token->value.op, "not")) {
                 if (strcmp(left_token->value.op, NOT_OP_PLACEHOLDER) != 0) {
                     fprintf(stderr, "Invalid expression\n");
                     exit(1);
                 }
                 result = !b;
-            } else if (!strcmp(currToken->value.op, "==")) {
+            } else if (!strcmp(curr_token->value.op, "==")) {
                 result = a == b;
-            } else if (*currToken->value.op == '>') {
+            } else if (*curr_token->value.op == '>') {
                 result = a > b;
-            } else if (!strcmp(currToken->value.op, ">=")) {
+            } else if (!strcmp(curr_token->value.op, ">=")) {
                 result = a >= b;
-            } else if (*currToken->value.op == '<') {
+            } else if (*curr_token->value.op == '<') {
                 result = a < b;
-            } else if (!strcmp(currToken->value.op, "<=")) {
+            } else if (!strcmp(curr_token->value.op, "<=")) {
                 result = a <= b;
             } else {
-                fprintf(stderr, "Invalid operator: %s\n", currToken->value.op);
+                fprintf(stderr, "Invalid operator: %s\n", curr_token->value.op);
                 exit(1);
-            }
+            }*/
             result_token->type = NUMBER;
             result_token->value.number = result;
             list_push(stack, result_token);

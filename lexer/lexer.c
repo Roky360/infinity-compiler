@@ -2,6 +2,7 @@
 #include "../config/globals.h"
 #include "../logging/logging.h"
 #include "../io/io.h"
+#include "../config/table_initializers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -47,61 +48,33 @@ void lexer_skip_whitespace(Lexer *lexer) {
 }
 
 Token *lexer_parse_id_token(Lexer *lexer) {
-    char *val = calloc(1, sizeof(char));
+    void *lookup_res;
+    int val_len = 1;
+    char *val = calloc(val_len, sizeof(char));
     if (!val)
         throw_memory_allocation_error(LEXER);
 
     while (isalnum(lexer->c) || lexer->c == '_') {
-        val = realloc(val, (strlen(val) + 2) * sizeof(char));
-        strcat(val, (char[]) {lexer->c, 0});
+        val = realloc(val, ++val_len);
+        val[val_len - 2] = lexer->c;
         lexer_forward(lexer);
     }
+    val[val_len - 1] = 0;
 
-    if (!strcmp(val, "void"))
-        return init_token(val, VOID_KEYWORD);
-    else if (!strcmp(val, "int"))
-        return init_token(val, INT_KEYWORD);
-    else if (!strcmp(val, "string"))
-        return init_token(val, STRING_KEYWORD);
-    else if (!strcmp(val, "bool"))
-        return init_token(val, BOOL_KEYWORD);
-    else if (!strcmp(val, "char"))
-        return init_token(val, CHAR_KEYWORD);
-    else if (!strcmp(val, "return"))
-        return init_token(val, RETURN_KEYWORD);
-    else if (!strcmp(val, "func"))
-        return init_token(val, FUNC_KEYWORD);
-    else if (!strcmp(val, "if"))
-        return init_token(val, IF_KEYWORD);
-    else if (!strcmp(val, "else"))
-        return init_token(val, ELSE_KEYWORD);
-    else if (!strcmp(val, "and"))
-        return init_token(val, AND_OPERATOR_KEYWORD);
-    else if (!strcmp(val, "or"))
-        return init_token(val, OR_OPERATOR_KEYWORD);
-    else if (!strcmp(val, "not"))
-        return init_token(val, NOT_OPERATOR_KEYWORD);
-    else if (!strcmp(val, "loop"))
-        return init_token(val, LOOP_KEYWORD);
-    else if (!strcmp(val, "to"))
-        return init_token(val, TO_KEYWORD);
-    else if (!strcmp(val, "times"))
-        return init_token(val, TIMES_KEYWORD);
-    else if (!strcmp(val, "start"))
-        return init_token(val, START_KEYWORD);
-    else if (!strcmp(val, "true"))
-        return init_token("1", INT);
-    else if (!strcmp(val, "false"))
-        return init_token("0", INT);
-
-    return init_token(val, ID);
+    lookup_res = hash_table_lookup(id_to_keyword_map, val);
+    if (lookup_res) { // if this is a keyword
+        return init_token(val, (TokenType) atoi(lookup_res));
+    } else {
+        return init_token(val, ID);
+    }
 }
 
-Token *lexer_parse_int_token(Lexer *lexer) {
-    int floating_point_met = 0, val_len;
-    char *val;
+Token *lexer_parse_number_token(Lexer *lexer) {
+    int val_len;
+    double res;
+    char *val, *conversion_res;
     if (lexer->c == '-') { // if negative number
-        val = strdup("-");
+        val = strdup("-"); // -.2
         val_len = 2;
         lexer_forward(lexer);
     } else {
@@ -113,48 +86,17 @@ Token *lexer_parse_int_token(Lexer *lexer) {
 
     while (isdigit(lexer->c) || lexer->c == '.') {
         val = realloc(val, ++val_len);
-        if (lexer->c == '.') {
-            if (!floating_point_met) {
-                floating_point_met = 1;
-            } else {
-                throw_exception_with_trace(LEXER, lexer, "More than one floating point in constant");
-            }
-        }
-        strcat(val, (char[]) {lexer->c, 0});
+        val[val_len - 2] = lexer->c;
         lexer_forward(lexer);
     }
+    val[val_len - 1] = 0;
 
-    return floating_point_met ? init_token(val, DOUBLE) : init_token(val, INT);
-}
-
-Token *lexer_parse_string_token(Lexer *lexer) {
-    char *val = calloc(1, sizeof(char));
-    if (!val)
-        throw_memory_allocation_error(LEXER);
-
-    lexer_forward(lexer);
-    while (lexer->c != '"') {
-        val = realloc(val, (strlen(val) + 2) * sizeof(char));
-        strcat(val, (char[]) {lexer->c, 0});
-        lexer_forward(lexer);
+    res = strtod(val, &conversion_res);
+    if (*conversion_res != '\0') {
+        throw_exception_with_trace(LEXER, lexer, "Illegal number");
     }
 
-    return init_token(val, STRING);
-}
-
-Token *lexer_parse_char_token(Lexer *lexer) {
-    char *val = calloc(2, sizeof(char));
-    if (!val)
-        throw_memory_allocation_error(LEXER);
-
-    lexer_forward(lexer);
-    val[0] = lexer->c;
-    lexer_forward(lexer);
-    if (lexer->c != '\'') {
-        throw_exception_with_trace(LEXER, lexer, "Char literal should contain only one character");
-    }
-
-    return init_token(val, CHAR);
+    return (res == (int) res) ? init_token(val, INT) : init_token(val, DOUBLE);
 }
 
 void lexer_skip_one_line_comment(Lexer *lexer) {
@@ -183,130 +125,27 @@ void lexer_skip_multi_line_comment(Lexer *lexer) {
 }
 
 Token *lexer_next_token(Lexer *lexer) {
+    char *errorMsg, *curr_char;
+    void *lookup_res;
     Token *t;
-    char *errorMsg;
-    char *currC;
 
     lexer_skip_whitespace(lexer);
 
-    if (isalpha(lexer->c) || lexer->c == '_')
-        t = lexer_parse_id_token(lexer);
-    else if (isdigit(lexer->c) || lexer->c == '.'
-             || (lexer->c == '-' && (isdigit(lexer_peek(lexer, 1)) || lexer_peek(lexer, 1) == '.')))
-        t = lexer_parse_int_token(lexer);
-    else {
-        alsprintf(&currC, "%c", lexer->c);
+    alsprintf(&curr_char, "%c", lexer->c);
 
-        switch (lexer->c) {
-            case '(':
-                t = init_token(currC, L_PARENTHESES);
-                break;
-            case ')':
-                t = init_token(currC, R_PARENTHESES);
-                break;
-            case '{':
-                t = init_token(currC, L_CURLY_BRACE);
-                break;
-            case '}':
-                t = init_token(currC, R_CURLY_BRACE);
-                break;
-            case '[':
-                t = init_token(currC, L_SQUARE_BRACKET);
-                break;
-            case ']':
-                t = init_token(currC, R_SQUARE_BRACKET);
-                break;
-            case ';':
-                t = init_token(currC, SEMICOLON);
-                break;
-            case ',':
-                t = init_token(currC, COMMA);
-                break;
-            case ':':
-                t = init_token(currC, COLON);
-                break;
-            case '=':
-                if (lexer_peek(lexer, 1) == '=') {
-                    t = init_token("==", EQUALS);
-                    lexer_forward(lexer);
-                } else
-                    t = init_token(currC, ASSIGNMENT);
-                break;
-            case '>':
-                if (lexer_peek(lexer, 1) == '=') {
-                    t = init_token(">=", GRATER_EQUAL);
-                    lexer_forward(lexer);
-                } else
-                    t = init_token(currC, GRATER_THAN);
-                break;
-            case '<':
-                if (lexer_peek(lexer, 1) == '=') {
-                    t = init_token("<=", LOWER_EQUAL);
-                    lexer_forward(lexer);
-                } else
-                    t = init_token(currC, LOWER_THAN);
-                break;
-            case '/':
-                if (lexer_peek(lexer, 1) == '/') {
-                    lexer_skip_one_line_comment(lexer);
-                } else if (lexer_peek(lexer, 1) == '-') {
-                    lexer_skip_multi_line_comment(lexer);
-                } else {
-                    t = init_token(currC, DIVIDE_OP);
-                    break;
-                }
-                return lexer_next_token(lexer);
-            case '"':
-                t = lexer_parse_string_token(lexer);
-                break;
-            case '\'':
-                t = lexer_parse_char_token(lexer);
-                break;
-            case '-':
-                if (lexer_peek(lexer, 1) == '>') {
-                    t = init_token("->", ARROW);
-                    lexer_forward(lexer);
-                } else if (lexer_peek(lexer, 1) == '-') {
-                    t = init_token("--", DEC);
-                    lexer_forward(lexer);
-                } else {
-                    t = init_token(currC, SUB_OP);
-                }
-                break;
-            case '+':
-                if (lexer_peek(lexer, 1) == '+') {
-                    t = init_token("++", INC);
-                    lexer_forward(lexer);
-                } else {
-                    t = init_token(currC, ADD_OP);
-                }
-                break;
-            case '*':
-                t = init_token(currC, MUL_OP);
-                break;
-            case '%':
-                t = init_token(currC, MODULUS_OP);
-                break;
-            case '^':
-                t = init_token(currC, POWER_OP);
-                break;
-            case '!':
-                if (lexer_peek(lexer, 1) == '=') {
-                    t = init_token("!=", NOT_EQUAL);
-                    lexer_forward(lexer);
-                } else
-                    t = init_token(currC, FACTORIAL_OP);
-                break;
-            case 0: // EOF
-                t = init_token(currC, EOF_TOKEN);
-                break;
-            default:
-                alsprintf(&errorMsg, "Unknown token '%c'", lexer->c);
-                throw_exception_with_trace(LEXER, lexer, errorMsg);
-                break;
-        }
+    lookup_res = hash_table_lookup(char_to_token_type_map, curr_char);
+    if (lookup_res) { // one-char tokens
+        t = init_token(curr_char, (TokenType) atoi((char *) lookup_res));
         lexer_forward(lexer);
+        return t;
     }
-
-    return t;
+    lookup_res = hash_table_lookup(char_to_to_lexing_function_map, curr_char);
+    if (lookup_res) { // call token parser function
+        t = ((Token *(*)(Lexer *, char *)) lookup_res)(lexer, curr_char);
+        return t;
+    } else {
+        alsprintf(&errorMsg, "Unknown token '%c'", lexer->c);
+        throw_exception_with_trace(LEXER, lexer, errorMsg);
+        return NULL;
+    }
 }

@@ -145,7 +145,7 @@ void semantic_analyze_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNo
         printf("%d\n", node->type);
     }
 
-    analyzer_func = hash_table_lookup(ast_type_to_analyzer_table, alsprintf(&id_ptr, "%d", node->type));
+    analyzer_func = hash_table_lookup(ast_type_to_analyzer_map, alsprintf(&id_ptr, "%d", node->type));
     free(id_ptr);
     if (analyzer_func) {
         analyzer_func(analyzer, node, parent);

@@ -60,9 +60,9 @@ char *token_type_to_str(TokenType type) {
         case R_PARENTHESES:
             return "<RIGHT_PARENTHESES>";
         case L_CURLY_BRACE:
-            return "<LEFT_BRACE>";
+            return "<LEFT_CURLY_BRACE>";
         case R_CURLY_BRACE:
-            return "<RIGHT_BRACE>";
+            return "<RIGHT_CURLY_BRACE>";
         case RETURN_KEYWORD:
             return "<RETURN_KEYWORD>";
         case FUNC_KEYWORD:
