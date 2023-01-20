@@ -6,8 +6,7 @@ ScopeStack *init_scope_stack() {
     ScopeStack *scope_s = malloc(sizeof(ScopeStack));
     scope_s->curr_scope_id = 0;
     scope_s->scopes = init_list(sizeof(Scope *));
-    // init with global scope
-    scope_stack_push_scope(scope_s);
+
     return scope_s;
 }
 
@@ -31,7 +30,7 @@ void scope_stack_add_identifier(ScopeStack *scope_s, char *id) {
 char *scope_stack_lookup(ScopeStack *scope_s, char *id) {
     int i;
     char *e;
-    for (i = scope_s->curr_scope_id - 1; i >= 0; i--) {
+    for (i = (int) scope_s->scopes->size - 1; i >= 0; i--) {
         e = (char *) hash_table_lookup(((Scope *) scope_s->scopes->items[i])->identifiers, id);
         if (e) // if found
             return e;

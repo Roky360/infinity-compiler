@@ -16,13 +16,11 @@ typedef struct {
 
 SemanticAnalyzer *init_semantic_analyzer(AstNode *root);
 
-int semantic_analyze_tree(SemanticAnalyzer *analyzer);
-
 int compare_types(DataType type_a, DataType type_b);
 
-void semantic_analyze_start_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
+char *validate_assignment(DataType type_dst, AstNode *value_node);
 
-void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
+int semantic_analyze_tree(SemanticAnalyzer *analyzer);
 
 void semantic_analyze_block(SemanticAnalyzer *analyzer, List *block, AstNode *parent);
 
@@ -31,6 +29,10 @@ void semantic_analyze_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNo
 void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 
 void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
+
+void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
+
+void semantic_analyze_start_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 
 void semantic_analyze_if_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 

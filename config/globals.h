@@ -5,7 +5,6 @@
 #include "../token/token.h"
 #include "../hash_table/hash_table.h"
 
-//#define _GNU_SOURCE
 #define INF_DEBUG
 #define EXTENSION "txt"
 #define DEFAULT_ROOT_FUNCTION_NAME "main"

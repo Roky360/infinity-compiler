@@ -66,9 +66,13 @@ typedef enum TokenType {
 typedef struct Token {
     TokenType type;
     char *value;
+
+    unsigned int line;
+    unsigned int column;
+    int length;
 } Token;
 
-Token *init_token(char *value, TokenType type);
+Token *init_token(char *value, TokenType type, unsigned int line, unsigned int column, int length);
 
 void token_dispose(Token *token);
 

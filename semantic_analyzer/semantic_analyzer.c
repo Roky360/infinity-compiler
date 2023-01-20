@@ -6,6 +6,7 @@
 #include "../config/table_initializers.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 SemanticAnalyzer *init_semantic_analyzer(AstNode *root) {
     SemanticAnalyzer *analyzer = malloc(sizeof(SemanticAnalyzer));
@@ -19,6 +20,46 @@ SemanticAnalyzer *init_semantic_analyzer(AstNode *root) {
     analyzer->error_count = 0;
 
     return analyzer;
+}
+
+/**
+ * returns true if the type_b can be casted to type_a
+ * */
+int compare_types(DataType type_a, DataType type_b) {
+    return type_a == type_b ||
+           ((type_b == TYPE_INT || type_b == TYPE_DOUBLE || type_b == TYPE_CHAR || type_b == TYPE_BOOL) &&
+            (type_a == TYPE_INT || type_a == TYPE_DOUBLE || type_a == TYPE_CHAR || type_a == TYPE_BOOL));
+}
+
+/* Checks for a valid assignment.
+ * - For function calls - not supported
+ * - For statements - checks that the types are matching, or can be cast, via the compare_types method.
+ * Then, if the target is of type bool, checks that the expression value_node is 0 or 1.
+ * Returns the error message according to the error found. If the assignment is valid, returns NULL.
+ * Every error message is allocated, so it has to be freed after usage.
+ * */
+char *validate_assignment(DataType type_dst, AstNode *value_node) {
+    char *msg;
+    DataType value_type = value_node->data.expression.value->type;
+    if (value_node->type == AST_FUNCTION_CALL) {
+        /* Function Call */
+        // function calls are not supported right now
+    } else {
+        /* Assignment */
+        // incompatible types
+        if (!compare_types(type_dst, value_type)) {
+            alsprintf(&msg, "Type mismatch: Can't assign value_node from type %s to %s variable",
+                      data_type_to_str(value_type), data_type_to_str(type_dst));
+            return msg;
+        }
+        // invalid value for boolean
+        if (type_dst == TYPE_BOOL &&
+            value_node->data.expression.value->value.double_value != 0 &&
+            value_node->data.expression.value->value.double_value != 1) {
+            return strdup("Illegal value_node to a boolean variable. The allowed values are true (1) or false (0)");
+        }
+    }
+    return NULL; // OK
 }
 
 /* This assumes that the root node is a compound
@@ -49,88 +90,18 @@ int semantic_analyze_tree(SemanticAnalyzer *analyzer) {
     return analyzer->error_count;
 }
 
-/**
- * returns true if the type_b can be casted to type_a
+/** Analyzes a block.
+ * Adds a new scope to the scope stack, and pops it at the end
  * */
-int compare_types(DataType type_a, DataType type_b) {
-    return type_a == type_b ||
-           ((type_b == TYPE_INT || type_b == TYPE_DOUBLE || type_b == TYPE_CHAR || type_b == TYPE_BOOL) &&
-            (type_a == TYPE_INT || type_a == TYPE_DOUBLE || type_a == TYPE_CHAR || type_a == TYPE_BOOL));
-}
-
-void semantic_analyze_start_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
-    analyzer->root_func_name = node->data.start_expr.starting_point;
-}
-
-void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
-    char *errMsg;
-    int insertion_successful;
-    insertion_successful = symbol_table_insert(analyzer->table,
-                                               FUNCTION,
-                                               node->data.function_definition.func_name,
-                                               (SymbolValue) {.func_symbol = (FunctionSymbol) {
-                                                       .func_name = node->data.function_definition.func_name,
-                                                       .arg_types = node->data.function_definition.args,
-                                                       .returned = 0
-                                               }},
-                                               node);
-    if (!insertion_successful) {
-        alsprintf(&errMsg, "Function '%s' already defined", node->data.function_definition.func_name);
-        log_error(SEMANTIC_ANALYZER, errMsg);
-    }
-    // analyze function body
-    semantic_analyze_block(analyzer, node->data.function_definition.body, node);
-    // check if return statement was met, and the function supposed to return something
-    if (node->data.function_definition.returnType != TYPE_VOID &&
-        !(symbol_table_lookup(analyzer->table, node->data.function_definition.func_name)->value.func_symbol.returned)) {
-        alsprintf(&errMsg, "Function %s does not return anything", node->data.function_definition.func_name);
-        log_error(SEMANTIC_ANALYZER, errMsg);
-    }
-}
-
-void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
-    char *errMsg;
-    int insertion_successful;
-    DataType var_type, value_type;
-    insertion_successful = symbol_table_insert(analyzer->table,
-                                               VARIABLE,
-                                               node->data.variable_declaration.var->name,
-                                               (SymbolValue) {.var_symbol = (VariableSymbol) {
-                                                       .var_name = node->data.variable_declaration.var->name,
-                                                       .type = node->data.variable_declaration.var->value->type,
-                                               }},
-                                               node);
-    if (!insertion_successful) {
-        alsprintf(&errMsg, "Variable '%s' already defined", node->data.variable_declaration.var->name);
-        log_error(SEMANTIC_ANALYZER, errMsg);
-    }
-
-    var_type = node->data.variable_declaration.var->value->type;
-    if (node->data.variable_declaration.value->type == AST_FUNCTION_CALL) {
-        // handle function call
-        value_type = -1;
-    } else {
-        // handle expression
-        value_type = node->data.variable_declaration.value->data.expression.value->type;
-    }
-    // type check
-    if (var_type == TYPE_BOOL &&
-        (node->data.variable_declaration.value->data.expression.value->value.double_value > 1 ||
-         node->data.variable_declaration.value->data.expression.value->value.double_value < 0)) {
-        log_error(SEMANTIC_ANALYZER,
-                  "Illegal value to a boolean variable. The allowed values are true (1) or false (0)");
-    } else if (!compare_types(var_type, value_type)) {
-        alsprintf(&errMsg, "Type mismatch: Can't assign value from type %s to a %s variable",
-                  data_type_to_str(value_type), data_type_to_str(var_type));
-        log_error(SEMANTIC_ANALYZER, errMsg);
-    }
-}
-
 void semantic_analyze_block(SemanticAnalyzer *analyzer, List *block, AstNode *parent) {
     int i;
+    // add new scope
+    scope_stack_push_scope(analyzer->scope_stack);
     for (i = 0; i < block->size; i++) {
         semantic_analyze_statement(analyzer, (AstNode *) block->items[i], parent);
     }
+    // pop the scope
+    scope_stack_pop_scope(analyzer->scope_stack);
 }
 
 void semantic_analyze_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
@@ -150,82 +121,98 @@ void semantic_analyze_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNo
     if (analyzer_func) {
         analyzer_func(analyzer, node, parent);
     }
-
-//    switch (node->type) {
-//        case AST_START_EXPRESSION:
-//            semantic_analyze_start_statement(analyzer, node, parent);
-//            break;
-//        case AST_VARIABLE_DECLARATION:
-//            semantic_analyze_variable_declaration(analyzer, node, parent);
-//            break;
-//        case AST_ASSIGNMENT:
-//            semantic_analyze_assignment(analyzer, node, parent);
-//            break;
-//        case AST_FUNCTION_DEFINITION:
-//            semantic_analyze_function(analyzer, node, parent);
-//            break;
-//        case AST_FUNCTION_CALL:
-//            // not supported yet
-//            break;
-//        case AST_IF_STATEMENT:
-//            semantic_analyze_if_statement(analyzer, node, parent);
-//            break;
-//        case AST_LOOP:
-//            semantic_analyze_loop_statement(analyzer, node, parent);
-//            break;
-//        case AST_RETURN_STATEMENT:
-//            semantic_analyze_return_statement(analyzer, node, parent);
-//            break;
-//        default:
-//            break;
-//    }
 }
 
+void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
+    char *err_msg, *id_found;
+
+    // check if a variable with the same name exists in the current or ancestor scopes
+    id_found = scope_stack_lookup(analyzer->scope_stack, node->data.variable_declaration.var->name);
+    if (id_found) { // if id exists
+        alsprintf(&err_msg, "Variable '%s' already defined", node->data.variable_declaration.var->name);
+        log_error(SEMANTIC_ANALYZER, err_msg);
+    } else {
+        symbol_table_insert(analyzer->table,
+                            VARIABLE,
+                            node->data.variable_declaration.var->name,
+                            (SymbolValue) {.var_symbol = (VariableSymbol) {
+                                    .var_name = node->data.variable_declaration.var->name,
+                                    .type = node->data.variable_declaration.var->value->type,
+                            }},
+                            node);
+        scope_stack_add_identifier(analyzer->scope_stack, strdup(node->data.variable_declaration.var->name));
+    }
+
+    // check that the initial value that is has been assigned to the variable is of the same type
+    err_msg = validate_assignment(node->data.variable_declaration.var->value->type,
+                                  node->data.variable_declaration.value);
+    if (err_msg) {
+        // assignment invalid
+        log_error(SEMANTIC_ANALYZER, err_msg);
+    }
+}
+
+// TODO: stopped here. continue adding scope
 void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
-    char *errMsg;
+    char *err_msg, *id_found;
     Symbol *target_var;
-    DataType src_type, dst_type;
+
     target_var = symbol_table_lookup(analyzer->table, node->data.assignment.dst_variable->value);
+    id_found = scope_stack_lookup(analyzer->scope_stack, node->data.assignment.dst_variable->value);
     // if the target var is undefined
-    if (!target_var) {
-        alsprintf(&errMsg, "Target variable '%s' is undefined. Try declaring it before usage: <variable_type> %s;",
+    if (!id_found) {
+        alsprintf(&err_msg,
+                  "Target variable '%s' is not defined in the current scope. Try declaring it before usage: <variable_type> %s;",
                   node->data.assignment.dst_variable->value, node->data.assignment.dst_variable->value);
-        log_error(SEMANTIC_ANALYZER, errMsg);
+        log_error(SEMANTIC_ANALYZER, err_msg);
     }
     // if the target var is not a variable (it is not allowed to assign values to a function...)
     if (target_var->type != VARIABLE) {
-        alsprintf(&errMsg, "Assigning values to a function is not allowed, only to variables");
-        log_error(SEMANTIC_ANALYZER, errMsg);
+        alsprintf(&err_msg, "Assigning values to a function is not allowed, only to variables");
+        log_error(SEMANTIC_ANALYZER, err_msg);
     }
 
-    src_type = node->data.assignment.expression->data.expression.value->type;
-    dst_type = target_var->value.var_symbol.type;
-    switch (node->data.assignment.expression->type) {
-        case AST_EXPRESSION:
-            if (!compare_types(src_type, dst_type)) {
-                alsprintf(&errMsg, "Type mismatch: Can't assign value from type %s to a %s variable",
-                          data_type_to_str(src_type), data_type_to_str(dst_type));
-                log_error(SEMANTIC_ANALYZER, errMsg);
-            }
-            break;
-        case AST_FUNCTION_CALL:
-            // CHECK FUNCTION CALL
-//            node->data.assignment.expression->data.function_call.func_name
-            break;
-        default:
-            // TODO: better error handling with trace (here and anywhere else)
-            alsprintf(&errMsg, "Expected an expression or a function call to assign to '%s'",
-                      node->data.assignment.dst_variable->value);
-            log_error(SEMANTIC_ANALYZER, errMsg);
-            break;
+    validate_assignment(target_var->value.var_symbol.type, node->data.assignment.expression);
+}
+
+void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
+    char *errMsg, *id_found;
+    id_found = scope_stack_lookup(analyzer->scope_stack, node->data.function_definition.func_name);
+    if (id_found) {
+        alsprintf(&errMsg, "Function '%s' already defined", node->data.function_definition.func_name);
+        log_error(SEMANTIC_ANALYZER, errMsg);
+    } else {
+        symbol_table_insert(analyzer->table,
+                            FUNCTION,
+                            node->data.function_definition.func_name,
+                            (SymbolValue) {.func_symbol = (FunctionSymbol) {
+                                    .func_name = node->data.function_definition.func_name,
+                                    .arg_types = node->data.function_definition.args,
+                                    .returned = 0
+                            }},
+                            node);
+        scope_stack_add_identifier(analyzer->scope_stack, strdup(node->data.function_definition.func_name));
+    }
+
+    // analyze function body
+    semantic_analyze_block(analyzer, node->data.function_definition.body, node);
+    // check if return statement was met, and the function supposed to return something
+    if (node->data.function_definition.returnType != TYPE_VOID &&
+        !(symbol_table_lookup(analyzer->table, node->data.function_definition.func_name)->value.func_symbol.returned)) {
+        alsprintf(&errMsg, "Function %s does not return anything", node->data.function_definition.func_name);
+        log_error(SEMANTIC_ANALYZER, errMsg);
     }
 }
 
+void semantic_analyze_start_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
+    analyzer->root_func_name = node->data.start_expr.starting_point;
+}
+
 void semantic_analyze_if_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
-    char *errMsg;
+    char *err_msg;
     DataType condition_type = node->data.if_statement.condition->value->type;
     if (condition_type != TYPE_INT) {
-        alsprintf(&errMsg, "Condition in if statement should have a boolean value, not %s",
+        alsprintf(&err_msg, "Condition in if statement should have a boolean value, not %s",
                   data_type_to_str(condition_type));
     }
     // analyze if body
@@ -241,7 +228,7 @@ void semantic_analyze_loop_statement(SemanticAnalyzer *analyzer, AstNode *node, 
     if (start == 0 && end < 0) {
         log_error(SEMANTIC_ANALYZER, "Loop amount must be a natural number.");
     }
-    // going backwards
+    // if loop goes backwards
     if (node->data.loop.loop_counter_name && end > start) {
         node->data.loop.forward = 0;
     }

@@ -75,7 +75,7 @@ char *get_file_extension(char *filename) {
     while (*--p != '.')
         if (p == filename) // if file name does not contain extension
             return "";
-    return strdup(p + 1);
+    return p + 1;
 }
 
 char *alsprintf(char **stream, char *format, ...) {

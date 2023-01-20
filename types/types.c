@@ -35,20 +35,13 @@ void expression_dispose(Expression *expr) {
     free(expr);
 }
 
-//DataType token_type_to_data_type(TokenType type) {
-//    switch (type) {
-//        case INT_KEYWORD:
-//            return TYPE_INT;
-//        case STRING_KEYWORD:
-//            return TYPE_STRING;
-////        case BOOL_KEYWORD:
-////            return TYPE_BOOL;
-//        case CHAR_KEYWORD:
-//            return TYPE_CHAR;
-//        default: // invalid type
-//            return -1;
-//    }
-//}
+int is_valid_data_type(int type) {
+    return type == TYPE_VOID
+           || type == TYPE_INT
+           || type == TYPE_CHAR
+           || type == TYPE_STRING
+           || type == TYPE_DOUBLE;
+}
 
 char *data_type_to_str(DataType type) {
     switch (type) {

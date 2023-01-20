@@ -23,6 +23,10 @@ void log_warning(const Lexer *lexer, const char *msg);
 
 void throw_exception_with_trace(Caller caller, const Lexer *lexer, const char *msg);
 
+void new_log_curr_line(const Lexer *lexer, unsigned int line, unsigned int col, int mark_length);
+
+void new_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length, char *msg, ...);
+
 void throw_memory_allocation_error(Caller caller);
 
 #endif //INFINITY_COMPILER_LOGGING_H

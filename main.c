@@ -8,6 +8,8 @@
 /*
 // TODO: add EOF proof to parser
 
+ TODO: make `loop` support expressions, not just constants
+
 // TODO: better logging system (add row and col to each token + add colors)
 // TODO: in the new logging system, change that the logging method will accept va_list, instead if calling alsprintf before..
 

@@ -1,4 +1,6 @@
 #include "logging.h"
+#include "../io/io.h"
+#include "../config/console_colors.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -52,6 +54,44 @@ void throw_exception_with_trace(Caller caller, const Lexer *lexer, const char *m
     log_curr_line(lexer);
     log_debug(caller, msg);
 
+    exit(1);
+}
+
+void new_log_curr_line(const Lexer *lexer, unsigned int line, unsigned int col, int mark_length) {
+    unsigned int line_no_len, i = 0;
+    int start_line = *(int *) lexer->line_offsets->items[line];
+
+    line_no_len = printf(" %d", line);
+    printf(" |  ");
+
+    while (lexer->src[start_line + i] != '\n' && lexer->src[i] != 0) {
+        if (i == col)
+            // color
+            printf(RED);
+        putchar(lexer->src[start_line + i++]);
+        if (i - col == mark_length)
+            // reset color
+            printf(RESET);
+    }
+    // print message
+    printf("\n%*s |  %*s%s^%s\n", line_no_len, "", col, "", RED, RESET);
+}
+
+void new_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
+                              char *msg, ...) {
+    char *format;
+    va_list args;
+    va_start(args, msg);
+    alsprintf(&format, "%s\n", msg); // add \n to the message
+
+    // log message
+    printf("[%s] ", caller_type_to_str(caller));
+    vprintf(format, args);
+    // log source code line
+    new_log_curr_line(lexer, line, col, mark_length);
+
+    free(format);
+    va_end(args);
     exit(1);
 }
 

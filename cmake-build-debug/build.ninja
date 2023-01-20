@@ -187,6 +187,12 @@ build CMakeFiles/infinity_compiler.dir/expression_evaluator/operator_appliers.c.
   OBJECT_DIR = CMakeFiles\infinity_compiler.dir
   OBJECT_FILE_DIR = CMakeFiles\infinity_compiler.dir\expression_evaluator
 
+build CMakeFiles/infinity_compiler.dir/code_generator/code_generator.c.obj: C_COMPILER__infinity_compiler_Debug C$:/Users/edens/Documents/programming/projects/.School/infinity_compiler/code_generator/code_generator.c || cmake_object_order_depends_target_infinity_compiler
+  DEP_FILE = CMakeFiles\infinity_compiler.dir\code_generator\code_generator.c.obj.d
+  FLAGS = -g -fdiagnostics-color=always -std=gnu2x
+  OBJECT_DIR = CMakeFiles\infinity_compiler.dir
+  OBJECT_FILE_DIR = CMakeFiles\infinity_compiler.dir\code_generator
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target infinity_compiler
@@ -195,7 +201,7 @@ build CMakeFiles/infinity_compiler.dir/expression_evaluator/operator_appliers.c.
 #############################################
 # Link the executable infinity_compiler.exe
 
-build infinity_compiler.exe: C_EXECUTABLE_LINKER__infinity_compiler_Debug CMakeFiles/infinity_compiler.dir/main.c.obj CMakeFiles/infinity_compiler.dir/config/globals.c.obj CMakeFiles/infinity_compiler.dir/lexer/lexer.c.obj CMakeFiles/infinity_compiler.dir/token/token.c.obj CMakeFiles/infinity_compiler.dir/list/list.c.obj CMakeFiles/infinity_compiler.dir/compiler/compiler.c.obj CMakeFiles/infinity_compiler.dir/io/io.c.obj CMakeFiles/infinity_compiler.dir/types/types.c.obj CMakeFiles/infinity_compiler.dir/ast/ast.c.obj CMakeFiles/infinity_compiler.dir/variable/variable.c.obj CMakeFiles/infinity_compiler.dir/logging/logging.c.obj CMakeFiles/infinity_compiler.dir/parser/parser.c.obj CMakeFiles/infinity_compiler.dir/expression_evaluator/expression_evaluator.c.obj CMakeFiles/infinity_compiler.dir/symbol_table/symbol_table.c.obj CMakeFiles/infinity_compiler.dir/symbol_table/symbol/symbol.c.obj CMakeFiles/infinity_compiler.dir/semantic_analyzer/semantic_analyzer.c.obj CMakeFiles/infinity_compiler.dir/scope_stack/scope/scope.c.obj CMakeFiles/infinity_compiler.dir/scope_stack/scope_stack.c.obj CMakeFiles/infinity_compiler.dir/hash_table/hash_table.c.obj CMakeFiles/infinity_compiler.dir/hash_table/table_entry.c.obj CMakeFiles/infinity_compiler.dir/config/table_initializers.c.obj CMakeFiles/infinity_compiler.dir/lexer/token_parsers.c.obj CMakeFiles/infinity_compiler.dir/expression_evaluator/operator_appliers.c.obj
+build infinity_compiler.exe: C_EXECUTABLE_LINKER__infinity_compiler_Debug CMakeFiles/infinity_compiler.dir/main.c.obj CMakeFiles/infinity_compiler.dir/config/globals.c.obj CMakeFiles/infinity_compiler.dir/lexer/lexer.c.obj CMakeFiles/infinity_compiler.dir/token/token.c.obj CMakeFiles/infinity_compiler.dir/list/list.c.obj CMakeFiles/infinity_compiler.dir/compiler/compiler.c.obj CMakeFiles/infinity_compiler.dir/io/io.c.obj CMakeFiles/infinity_compiler.dir/types/types.c.obj CMakeFiles/infinity_compiler.dir/ast/ast.c.obj CMakeFiles/infinity_compiler.dir/variable/variable.c.obj CMakeFiles/infinity_compiler.dir/logging/logging.c.obj CMakeFiles/infinity_compiler.dir/parser/parser.c.obj CMakeFiles/infinity_compiler.dir/expression_evaluator/expression_evaluator.c.obj CMakeFiles/infinity_compiler.dir/symbol_table/symbol_table.c.obj CMakeFiles/infinity_compiler.dir/symbol_table/symbol/symbol.c.obj CMakeFiles/infinity_compiler.dir/semantic_analyzer/semantic_analyzer.c.obj CMakeFiles/infinity_compiler.dir/scope_stack/scope/scope.c.obj CMakeFiles/infinity_compiler.dir/scope_stack/scope_stack.c.obj CMakeFiles/infinity_compiler.dir/hash_table/hash_table.c.obj CMakeFiles/infinity_compiler.dir/hash_table/table_entry.c.obj CMakeFiles/infinity_compiler.dir/config/table_initializers.c.obj CMakeFiles/infinity_compiler.dir/lexer/token_parsers.c.obj CMakeFiles/infinity_compiler.dir/expression_evaluator/operator_appliers.c.obj CMakeFiles/infinity_compiler.dir/code_generator/code_generator.c.obj
   FLAGS = -g
   LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\infinity_compiler.dir

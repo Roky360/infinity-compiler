@@ -13,8 +13,6 @@ Scope *init_scope(int scope_id);
 
 int scope_add_identifier(Scope *scope, char *id);
 
-void dispose_identifier(void *item);
-
 void scope_dispose(Scope *scope);
 
 #endif //INFINITY_COMPILER_SCOPE_H

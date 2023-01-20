@@ -3,14 +3,16 @@
 
 #include <stdlib.h>
 #include "../token/token.h"
+#include "../list/list.h"
 
-typedef struct LexerStruct {
+typedef struct Lexer {
     char *src;
     size_t src_len;
     char c;           // current character
     unsigned int idx; // index of current character
     unsigned int row; // line number     - for error reporting
     unsigned int col; // column number   - for error reporting
+    List *line_offsets;
 } Lexer;
 
 Lexer *init_lexer(char *src);

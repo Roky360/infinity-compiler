@@ -5,6 +5,7 @@
 #include "../expression_evaluator/expression_evaluator.h"
 #include "../config/table_initializers.h"
 #include <stdio.h>
+#include <string.h>
 
 Parser *init_parser(Lexer *lexer) {
     Parser *parser = malloc(sizeof(Parser));
@@ -23,9 +24,15 @@ void parser_dispose(Parser *parser) {
 }
 
 void parser_handle_unexpected_token(Parser *parser, char *expectations) {
-    char *errMsg;
-    alsprintf(&errMsg, "Unexpected token: '%s'. Expecting %s", parser->token->value, expectations);
-    throw_exception_with_trace(PARSER, parser->lexer, errMsg);
+//    char *errMsg;
+//    alsprintf(&errMsg, "Unexpected token: '%s'. Expecting %s", parser->token->value, expectations);
+//    throw_exception_with_trace(PARSER, parser->lexer, errMsg);
+//    new_exception_with_trace(PARSER, parser->lexer, parser->lexer->row, col, tok_len,
+//                             "Unexpected token: \"%s\". Expecting %s", parser->token->value, expectations);
+    new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+                             parser->token->length,
+                             "Unexpected token \"%s\". Expecting %s", parser->token->value,
+                             expectations);
 }
 
 /*
@@ -56,7 +63,10 @@ Token *parser_forward_with_list(Parser *parser, TokenType *types, size_t types_l
         if (parser->token->type == types[i])
             return parser_forward(parser, types[i]);
     }
-    parser_handle_unexpected_token(parser, expectations);
+    new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+                             parser->token->length,
+                             "Unexpected token \"%s\". Expecting %s", parser->token->value,
+                             expectations);
     return NULL;
 }
 
@@ -133,15 +143,21 @@ AstNode *parser_parse_compound(Parser *parser) {
 }
 
 void parser_parse_block(Parser *parser, List *block) {
+    unsigned int row = parser->token->line,
+            col = parser->token->column, tok_len = parser->token->length;
     parser_forward(parser, L_CURLY_BRACE);
     while (parser->token->type != R_CURLY_BRACE) {
+        if (parser->token->type == EOF_TOKEN) {
+            new_exception_with_trace(PARSER, parser->lexer, row, col, (int) tok_len,
+                                     "Expected '}' to close this block");
+        }
         list_push(block, parser_parse_statement(parser));
     }
     parser_forward(parser, R_CURLY_BRACE);
 }
 
 AstNode *parser_parse_statement(Parser *parser) {
-    char *errMsg, *id_ptr;
+    char *id_ptr;
     AstNode *(*parser_func)(Parser *);
 
     parser_func = hash_table_lookup(statement_to_parser_map, alsprintf(&id_ptr, "%d", parser->token->type));
@@ -151,34 +167,11 @@ AstNode *parser_parse_statement(Parser *parser) {
         return parser_func(parser);
     } else {
         // print error message
-        alsprintf(&errMsg, "Expected an expression, got %s", token_type_to_str(parser->token->type));
-        throw_exception_with_trace(PARSER, parser->lexer, errMsg);
+        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+                                 strlen(parser->token->value),
+                                 "Expected an expression, got %s", token_type_to_str(parser->token->type));
         return NULL;
     }
-
-//    switch (parser->token->type) {
-//        case START_KEYWORD:
-//            return parser_parse_start_expression(parser);
-//        case ID:
-//            return parser_parse_id(parser);
-//        case FUNC_KEYWORD:
-//            return parser_parse_function_definition(parser);
-//        case INT_KEYWORD:
-//        case CHAR_KEYWORD:
-//        case BOOL_KEYWORD:
-//        case STRING_KEYWORD:
-//            return parser_parse_var_declaration(parser);
-//        case IF_KEYWORD:
-//            return parser_parse_if_statement(parser);
-//        case LOOP_KEYWORD:
-//            return parser_parse_loop(parser);
-//        case RETURN_KEYWORD:
-//            return parser_parse_return_statement(parser);
-//        default:
-//            alsprintf(&errMsg, "Expected an expression, got %s", token_type_to_str(parser->token->type));
-//            throw_exception_with_trace(PARSER, parser->lexer, errMsg);
-//            return NULL;
-//    }
 }
 
 AstNode *parser_parse_id(Parser *parser) {
@@ -194,7 +187,7 @@ AstNode *parser_parse_id(Parser *parser) {
             parser_forward(parser, SEMICOLON);
             return init_ast(AST_NOOP);
         default:
-            throw_exception_with_trace(PARSER, parser->lexer, "Expected");
+            parser_handle_unexpected_token(parser, "an expression");
             return NULL;
     }
 }
@@ -247,7 +240,6 @@ AstNode *parser_parse_var_declaration(Parser *parser) {
 }
 
 AstNode *parser_parse_function_definition(Parser *parser) {
-    char *errMsg;
     Variable *arg;
     DataType argType;
     AstNode *node = init_ast(AST_FUNCTION_DEFINITION);
@@ -261,13 +253,10 @@ AstNode *parser_parse_function_definition(Parser *parser) {
     parser_forward(parser, L_PARENTHESES);
     while (parser->token->type != R_PARENTHESES) {
         // get arg type
-        /*TODO:here*/
-//        argType = token_type_to_data_type(parser->token->type);
-        argType = (DataType) parser->token->type;
-        if (argType == -1) // invalid type
+        argType = is_valid_data_type(parser->token->type);
+        if (!argType) // invalid type
         {
-            alsprintf(&errMsg, "Expected argument type, got %s token.", token_type_to_str(parser->token->type));
-            throw_exception_with_trace(PARSER, parser->lexer, errMsg);
+            parser_handle_unexpected_token(parser, "argument type");
         }
         parser_forward(parser, parser->token->type);
         // get arg name
@@ -296,17 +285,8 @@ AstNode *parser_parse_function_definition(Parser *parser) {
         node->data.function_definition.returnType = TYPE_VOID;
     }
 
-
+    // parse function body
     parser_parse_block(parser, node->data.function_definition.body);
-
-//    printf("name: %s\n", node->data.function_definition.func_name);
-//    printf("return type: %d\n", node->data.function_definition.returnType);
-//    for (int i = 0; i < node->data.function_definition.args->size; i++) {
-//        printf("var %s\n", ((Variable *) (node->data.function_definition.args->items[i]))->name);
-//    }
-//    AstNode *v1 = ((AstNode *) (node->data.function_definition.body->items[0]));
-//    AstNode *v2 = ((AstNode *) (node->data.function_definition.body->items[1]));
-//    AstNode *v3 = ((AstNode *) (node->data.function_definition.body->items[2]));
 
     return node;
 }
@@ -395,12 +375,14 @@ AstNode *parser_parse_loop(Parser *parser) {
             break;
         default:
             // TODO: maybe replace with shorter message
-            throw_exception_with_trace(PARSER, parser->lexer,
-                                       "Illegal use of the loop statement.\n"
-                                       "Usage:\n"
-                                       "* `loop 3 times` to execute the loop body 3 times\n"
-                                       "* `loop i: 3 times` to also have access to a named loop counter inside the loop that runs from 0 to 2\n"
-                                       "* `loop i: 5 to 10 times` to set a custom range to the loop counter (here from 5 to 9)");
+            printf("%d\n", parser->token->length);
+            new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+                                     parser->token->length,
+                                     "Illegal use of the loop statement.\n"
+                                     "Usage:\n"
+                                     "* `loop 3 times` to execute the loop body 3 times\n"
+                                     "* `loop i: 3 times` to also have access to a named loop counter inside the loop that runs from 0 to 2\n"
+                                     "* `loop i: 5 to 10 times` to set a custom range to the loop counter (here from 5 to 9)");
             break;
     }
     // parse loop body

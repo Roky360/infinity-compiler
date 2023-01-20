@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-Token *init_token(char *value, TokenType type) {
+Token *init_token(char *value, TokenType type, unsigned int line, unsigned int column, int length) {
     Token *token = malloc(sizeof(Token));
     if (!token) {
         printf("Cant allocate memory for token\n");
@@ -10,6 +10,9 @@ Token *init_token(char *value, TokenType type) {
     }
     token->value = value;
     token->type = type;
+    token->line = line;
+    token->column = column;
+    token->length = length;
 
     return token;
 }

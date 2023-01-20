@@ -48,7 +48,7 @@ Expression init_expression();
 
 void expression_dispose(Expression *expr);
 
-//DataType token_type_to_data_type(TokenType type);
+int is_valid_data_type(int type);
 
 char *data_type_to_str(DataType type);
 
