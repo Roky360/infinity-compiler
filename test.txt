@@ -1,13 +1,17 @@
 start main;
 
-func main(int argc, string argv) -> int {
-    int x = 'd';
+func main() -> int {
+    int x = 2;
+    char chr;
+    //x = not 4!;
+
+    //int x = 'd';
     //x = 2 + x / 5;         // x 2 x 5 / + =
     //x = 5*2^(4! / 8 - 2);   // x=4
-    x = 1 != 0;
 
-    bool a = true;
-    a = 10;
+    //bool a = true;
+    //a = 10; // fix this!!
+
     int y;
 
     return 1;
@@ -16,11 +20,12 @@ func main(int argc, string argv) -> int {
 func f() {
     int x = 10;
     int y = 4;
-    if (1) {
-        int z;
-    }
-    if (0) {
-        int z;
-    }
     int z;
+
+    loop 3 times {
+        z = 3;
+        loop 5 times {
+            x = 12;
+        }
+    }
 }

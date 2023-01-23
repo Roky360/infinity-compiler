@@ -72,7 +72,7 @@ typedef struct {
 typedef struct {
     List *body_node; // list of AST nodes
     List *else_node; // list of AST nodes
-    Expression *condition;
+    AstNode *condition;
 } IfStatement;
 
 /**
@@ -93,6 +93,7 @@ typedef struct {
 */
 typedef struct {
     AstNode *value_expr;
+    unsigned int parent_function_arg_count; // to be used by the code generator in the `ret` instruction
 } ReturnStatement;
 
 typedef enum {

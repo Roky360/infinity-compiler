@@ -5,11 +5,16 @@
 #include "../token/token.h"
 #include "../hash_table/hash_table.h"
 
+/** Debug Flags */
 #define INF_DEBUG
-#define EXTENSION "txt"
-#define DEFAULT_ROOT_FUNCTION_NAME "main"
+//#define INF_SHOW_COLORS
 
 /** Defines */
+#define INPUT_EXTENSION "txt"
+#define OUTPUT_EXTENSION "asm"
+#define DEFAULT_OUTPUT_PATH ""
+
+#define DEFAULT_ROOT_FUNCTION_NAME "main"
 #define SYMBOL_TABLE_SIZE 199
 #define SCOPE_SIZE 23
 

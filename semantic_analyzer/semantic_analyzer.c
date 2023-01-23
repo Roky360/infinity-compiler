@@ -210,7 +210,7 @@ void semantic_analyze_start_statement(SemanticAnalyzer *analyzer, AstNode *node,
 
 void semantic_analyze_if_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
     char *err_msg;
-    DataType condition_type = node->data.if_statement.condition->value->type;
+    DataType condition_type = node->data.if_statement.condition->data.expression.value->type;
     if (condition_type != TYPE_INT) {
         alsprintf(&err_msg, "Condition in if statement should have a boolean value, not %s",
                   data_type_to_str(condition_type));
@@ -255,6 +255,8 @@ void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node
     }
     // mark that the function has reached a return statement
     symbol_table_lookup(analyzer->table, parent->data.function_definition.func_name)->value.func_symbol.returned = 1;
+    // store the number of arguments of the parent function
+    node->data.return_statement.parent_function_arg_count = parent->data.function_definition.args->size;
 }
 
 void semantic_analyzer_dispose(SemanticAnalyzer *analyzer) {

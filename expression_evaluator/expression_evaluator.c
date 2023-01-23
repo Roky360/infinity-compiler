@@ -16,6 +16,7 @@ char *print_ar_token(const void *item) {
             alsprintf(&buf, "%f", t->value.number);
             return buf;
         case OPERATOR:
+        case PLACEHOLDER:
             return t->value.op;
         case PAREN:
             return (char[]) {t->value.paren, 0};
@@ -51,25 +52,6 @@ int get_precedence(char *op) {
     } else {
         return -1;
     }
-    /*if (strstr("^!", op) != NULL) {
-        return 8;
-    } else if (strstr("not", op) != NULL) {
-        return 7;
-    } else if (strstr("/*%%", op) != NULL) {
-        return 6;
-    } else if (strstr("+-", op) != NULL) {
-        return 5;
-    } else if (strstr("><", op) != NULL) {
-        return 4;
-    } else if (strstr("==", op) != NULL) {
-        return 3;
-    } else if (strstr("and", op) != NULL) {
-        return 2;
-    } else if (strstr("or", op) != NULL) {
-        return 1;
-    } else {
-        return -1;
-    }*/
 }
 
 int is_right_associative(char *op) {
@@ -107,6 +89,12 @@ int parse_tokens(const List *expression, List *tokens) {
             }
             list_push(tokens, arithmeticToken);
 
+            // check that there are no two operands adjacent to each other, like 5 7 +
+            if (prev_token_type == NUMBER) {
+                fprintf(stderr, "Missing operator between operands");
+                exit(1);
+            }
+            // close helper parentheses
             if (should_close_paren && paren_count == 0) {
                 list_push(tokens, init_arithmetic_token_with(PAREN, (ArithmeticTokenValue) {.paren = ')'}));
                 should_close_paren = 0;
@@ -118,22 +106,29 @@ int parse_tokens(const List *expression, List *tokens) {
             arithmeticToken->value.op = token->value;
 
             // if current arithmeticToken is minus operator or not operator, and no operand was before it (like -1 or !true)
-            if ((token->type == SUB_OP || token->type == NOT_OPERATOR_KEYWORD) && prev_token_type != NUMBER) {
+            if ((token->type == SUB_OP || token->type == NOT_OPERATOR_KEYWORD)
+                && prev_token_type != NUMBER && prev_token_type != PLACEHOLDER) {
                 list_push(tokens, init_arithmetic_token_with(PAREN, (ArithmeticTokenValue) {.paren = '('}));
                 if (token->type == NOT_OPERATOR_KEYWORD) { // placeholder token for "not" operator
                     list_push(tokens,
-                              init_arithmetic_token_with(NUMBER, (ArithmeticTokenValue) {.op = NOT_OP_PLACEHOLDER}));
+                              init_arithmetic_token_with(PLACEHOLDER,
+                                                         (ArithmeticTokenValue) {.op = NOT_OP_PLACEHOLDER}));
+                    prev_token_type = PLACEHOLDER;
                 } else { // dummy zero for minus operator
                     list_push(tokens, init_arithmetic_token_with(NUMBER, (ArithmeticTokenValue) {.number = 0}));
+                    prev_token_type = OPERATOR;
                 }
                 should_close_paren = 1;
+            } else {
+                prev_token_type = OPERATOR;
             }
             list_push(tokens, arithmeticToken);
-            prev_token_type = OPERATOR;
 
-            if (token->type == FACTORIAL_OP)
+            if (token->type == FACTORIAL_OP) {
                 list_push(tokens,
-                          init_arithmetic_token_with(NUMBER, (ArithmeticTokenValue) {.op = FACT_OP_PLACEHOLDER}));
+                          init_arithmetic_token_with(PLACEHOLDER, (ArithmeticTokenValue) {.op = FACT_OP_PLACEHOLDER}));
+                prev_token_type = PLACEHOLDER;
+            }
         } else if (is_parentheses(token->type)) {
             arithmeticToken->type = PAREN;
             arithmeticToken->value.paren = *token->value;
@@ -166,7 +161,7 @@ void infix_to_postfix(List *infix, List *postfix) {
 
     for (int i = 0; i < infix->size; i++) {
         currToken = infix->items[i];
-        if (currToken->type == NUMBER) {
+        if (currToken->type == NUMBER || currToken->type == PLACEHOLDER) {
             list_push(postfix, currToken);
         } else if (currToken->type == OPERATOR) {
             while (!list_is_empty(operator_stack) &&
@@ -215,7 +210,7 @@ double evaluate_postfix(List *postfix) {
         curr_token = postfix->items[i];
         result_token = init_empty_arithmetic_token();
 
-        if (curr_token->type == NUMBER) {
+        if (curr_token->type == NUMBER || curr_token->type == PLACEHOLDER) {
             list_push(stack, curr_token);
         } else if (curr_token->type == OPERATOR) {
             right_token = list_pop(stack);
@@ -229,7 +224,8 @@ double evaluate_postfix(List *postfix) {
 
             applier_func = hash_table_lookup(operator_to_applier_function_map, curr_token->value.op);
             if (applier_func) {
-                result = applier_func(a, b, left_token->value.op, right_token->value.op);
+                result = applier_func(a, b, left_token->type == PLACEHOLDER ? left_token->value.op : "",
+                                      right_token->type == PLACEHOLDER ? right_token->value.op : "");
             } else {
                 fprintf(stderr, "Invalid operator: %s\n", curr_token->value.op);
                 exit(1);
@@ -309,11 +305,12 @@ int evaluate_expression(const List *expression, double *res) {
     if (!parse_tokens(expression, infix))
         return 0;
     infix_to_postfix(infix, postfix);
+    list_print(infix, print_ar_token);
+    list_print(postfix, print_ar_token);
     *res = evaluate_postfix(postfix);
 
-//    list_print(infix, print_ar_token);
-//    list_print(postfix, print_ar_token);
-//    printf(" = %f\n", *res);
+
+    printf(" = %f\n", *res);
 
     list_dispose(infix);
     free(postfix);

@@ -7,6 +7,7 @@
 #include "../config/constants.h"
 #include "../expression_evaluator/expression_evaluator.h"
 #include "../expression_evaluator/operator_appliers.h"
+#include "../code_generator/code_generator.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -321,7 +322,6 @@ HashTable *precedence_map;
 
 void init_precedence_map() {
     int i;
-    char *id_ptr;
     char *ops[] = { // keys
             // 8
             OP_POW,
@@ -374,6 +374,41 @@ void init_precedence_map() {
                 precedence_map,
                 strdup(ops[i]),
                 strdup(precedences[i])
+        );
+    }
+}
+
+/* Code Generator */
+HashTable *statement_to_generator_map;
+
+void init_statement_to_generator_map() {
+    int i;
+    char *id_ptr;
+    AstType ast_types[] = { // keys
+            AST_VARIABLE_DECLARATION,
+            AST_ASSIGNMENT,
+            AST_FUNCTION_DEFINITION,
+            AST_FUNCTION_CALL,
+            AST_IF_STATEMENT,
+            AST_LOOP,
+            AST_RETURN_STATEMENT,
+    };
+    void (*generator_funcs[])(CodeGenerator *, AstNode *) = { // values
+            generate_variable_declaration,
+            generate_assignment,
+            generate_function,
+            generate_function_call,
+            generate_if_statement,
+            generate_loop,
+            generate_return_statement,
+    };
+    statement_to_generator_map = init_hash_table(19, NULL);
+
+    for (i = 0; i < ARRLEN(ast_types); i++) {
+        hash_table_insert(
+                statement_to_generator_map,
+                alsprintf(&id_ptr, "%d", ast_types[i]),
+                generator_funcs[i]
         );
     }
 }

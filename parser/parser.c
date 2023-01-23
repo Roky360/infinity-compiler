@@ -316,15 +316,15 @@ AstNode *parser_parse_if_statement(Parser *parser) {
     // parse boolean expression
     parser_forward(parser, L_PARENTHESES);
     parser_get_tokens_until(parser, condition, R_PARENTHESES);
-    node->data.if_statement.condition = init_expression_p();
-    node->data.if_statement.condition->tokens = condition;
-    // TODO: change the type to int   ->                                   \/
-    node->data.if_statement.condition->value = init_literal_value(TYPE_DOUBLE, (Value) {});
-    if (evaluate_expression(node->data.if_statement.condition->tokens,
-                            &node->data.if_statement.condition->value->value.double_value)) {
+    node->data.if_statement.condition = init_ast(AST_EXPRESSION);
+    node->data.if_statement.condition->data.expression.tokens = condition;
+    // TODO: change the type to int   ->                                                   \/
+    node->data.if_statement.condition->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
+    if (evaluate_expression(node->data.if_statement.condition->data.expression.tokens,
+                            &node->data.if_statement.condition->data.expression.value->value.double_value)) {
         // TODO: move this to the analyzer
         alsprintf(&warning, "This if statement is always %s",
-                  node->data.if_statement.condition->value->value.double_value ? "true" : "false");
+                  node->data.if_statement.condition->data.expression.value->value.double_value ? "true" : "false");
         log_warning(parser->lexer, warning);
     }
 

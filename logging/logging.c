@@ -1,5 +1,6 @@
 #include "logging.h"
 #include "../io/io.h"
+#include "../config/globals.h"
 #include "../config/console_colors.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,16 +66,24 @@ void new_log_curr_line(const Lexer *lexer, unsigned int line, unsigned int col, 
     printf(" |  ");
 
     while (lexer->src[start_line + i] != '\n' && lexer->src[i] != 0) {
+#ifdef INF_SHOW_COLORS
         if (i == col)
             // color
             printf(RED);
+#endif
         putchar(lexer->src[start_line + i++]);
+#ifdef INF_SHOW_COLORS
         if (i - col == mark_length)
             // reset color
             printf(RESET);
+#endif
     }
     // print message
+#ifdef INF_SHOW_COLORS
     printf("\n%*s |  %*s%s^%s\n", line_no_len, "", col, "", RED, RESET);
+#else
+    printf("\n%*s |  %*s^\n", line_no_len, "", col, "");
+#endif
 }
 
 void new_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,

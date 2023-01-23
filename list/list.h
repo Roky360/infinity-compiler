@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-typedef struct {
+typedef struct List {
     void **items;
     unsigned int size;
     unsigned int item_size;

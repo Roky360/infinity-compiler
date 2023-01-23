@@ -7,7 +7,7 @@
 
 typedef struct {
     HashTable *table;
-    List *symbols; // final list of symbols that will be generated in the application by the code generator
+    List *var_symbols; // final list of var_symbols that will be generated in the application by the code generator
 } SymbolTable;
 
 SymbolTable *init_symbol_table();

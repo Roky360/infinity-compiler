@@ -78,6 +78,14 @@ char *get_file_extension(char *filename) {
     return p + 1;
 }
 
+char *get_file_name(char *path) {
+    char *p = path + strlen(path) - 1;
+    while (*--p != '/')
+        if (p == path) // if file name does not contain extension
+            return path;
+    return p + 1;
+}
+
 char *alsprintf(char **stream, char *format, ...) {
 //    int res;
     va_list args;
@@ -88,4 +96,29 @@ char *alsprintf(char **stream, char *format, ...) {
 
     va_end(args);
     return *stream;
+}
+
+char *change_file_extension(char *filename, char *new_ext) {
+    char *p, *ext_p;
+    int filename_new_len, new_ext_len, i;
+    ext_p = get_file_extension(filename);
+    new_ext_len = strlen(new_ext);
+    filename_new_len = strlen(filename) - strlen(ext_p) + new_ext_len;
+
+    filename = realloc(filename, filename_new_len + 1);
+    p = filename + filename_new_len - new_ext_len;
+    for (i = 0; i < new_ext_len; i++, p++, new_ext++) {
+        *p = *new_ext;
+    }
+
+    return filename;
+}
+
+void write_to_file(FILE *fp, char *format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    vfprintf(fp, format, args);
+
+    va_end(args);
 }

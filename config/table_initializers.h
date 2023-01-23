@@ -40,4 +40,9 @@ extern HashTable *precedence_map;
 
 void init_precedence_map();
 
+/* Code Generator */
+extern HashTable *statement_to_generator_map;
+
+void init_statement_to_generator_map();
+
 #endif //INFINITY_COMPILER_TABLE_INITIALIZERS_H

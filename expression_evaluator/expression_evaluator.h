@@ -29,6 +29,7 @@ typedef enum {
     NUMBER,
     OPERATOR,
     PAREN,
+    PLACEHOLDER,
 } ArithmeticTokenType;
 
 typedef union {

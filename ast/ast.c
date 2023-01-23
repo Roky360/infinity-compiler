@@ -92,7 +92,6 @@ AstNode *init_ast_if_statement(AstNode *node) {
     node->data = (AstData) {.if_statement = (IfStatement) {
             .body_node = init_list(sizeof(AstNode *)),
             .else_node = init_list(sizeof(AstNode *)),
-            .condition = init_expression_p(),
     }};
     return node;
 }

@@ -5,16 +5,18 @@
 #include "../logging/logging.h"
 #include "../io/io.h"
 #include "../config/globals.h"
+#include "../code_generator/code_generator.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
-void compiler_compile(char *src) {
+void compiler_compile(char *src, char *output_path) {
     Lexer *lexer;
     Parser *parser;
     AstNode *root;
     SemanticAnalyzer *analyzer;
+    CodeGenerator *generator;
     int error_count;
     char *msg;
     init_globals();
@@ -31,6 +33,8 @@ void compiler_compile(char *src) {
         log_error(COMPILER, msg);
     }
     // generate code
+    generator = init_code_generator(analyzer->table, root, analyzer->starting_point, output_path);
+    code_generator_generate(generator);
 
 //     Token *tok;
 //     while ((tok = lexer_next_token(lexer))->type != EOF_TOKEN)
@@ -40,10 +44,11 @@ void compiler_compile(char *src) {
 
     parser_dispose(parser);
     semantic_analyzer_dispose(analyzer);
+    dispose_code_generator(generator);
     clean_globals();
 }
 
-void compiler_compile_file(const char *filename) {
+void compiler_compile_file(const char *input_path, char *output_path) {
     char *src;
 
 #ifdef INF_DEBUG
@@ -55,9 +60,9 @@ void compiler_compile_file(const char *filename) {
 #endif
 
     /** Compiler Action */
-    src = read_file(filename);
+    src = read_file(input_path);
 
-    compiler_compile(src);
+    compiler_compile(src, output_path);
 
     free(src);
 
@@ -72,5 +77,6 @@ void compiler_compile_file(const char *filename) {
         alsprintf(&done_msg, "Compiled successfully in %d ms", (int) elapsed_time_ms);
     }
     log_debug(COMPILER, done_msg);
+    free(done_msg);
 #endif
 }
