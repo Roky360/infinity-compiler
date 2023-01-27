@@ -59,9 +59,14 @@ void *list_pop(List *list) {
     return val;
 }
 
+void list_clear(List *list) {
+    while (!list_is_empty(list))
+        free(list_pop(list));
+}
+
 void list_insert(List *list, int idx, void *item) {
     if (idx > list->size - 1 || idx < 0) {
-        printf("List index %zu out of range: 0..%zu\n", idx, list->size - 1);
+        printf("List index %d out of range: 0..%u\n", idx, list->size - 1);
         exit(1);
 //        return;
     }

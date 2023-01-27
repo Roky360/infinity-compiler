@@ -5,8 +5,17 @@
 #include "../symbol_table/symbol_table.h"
 #include "register_handler.h"
 
+#define EXPR_RES_REG EAX
+
 /** Naming Conventions */
 #define ENTRY_POINT_NAME "_start"
+/** Helper Procedures */
+#define INCLUDE_ASM_PATH "../config/include.asm"
+
+#define POWER_PROC "Power"
+#define FACT_PROC "Fact"
+#define PRINT_PROC "Print"
+#define PRINT_INT_PROC "PrintInt"
 
 typedef struct CodeGenerator {
     SymbolTable *symbol_table;
@@ -28,14 +37,20 @@ void code_generator_generate(CodeGenerator *generator);
 
 void generate_data_segment(CodeGenerator *generator);
 
+void generate_bss_segment(CodeGenerator *generator);
+
 // generates the code segment and calls the starting point function
 void generate_code_segment(CodeGenerator *generator);
+
+char *get_variable_size_prefix(CodeGenerator *generator, char *var_name);
 
 void code_generator_apply_assignment(CodeGenerator *generator, DataType var_type, char *var_name, char *reg);
 
 int generate_block(CodeGenerator *generator, List *block);
 
 void generate_statement(CodeGenerator *generator, AstNode *node);
+
+void generate_complicated_arithmetic_expression(CodeGenerator *generator, List *postfix_expr_lst);
 
 void generate_arithmetic_expression(CodeGenerator *generator, Expression *expr);
 

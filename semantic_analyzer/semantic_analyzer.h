@@ -4,6 +4,7 @@
 #include "../symbol_table/symbol_table.h"
 #include "../ast/ast.h"
 #include "../scope_stack/scope_stack.h"
+#include "../lexer/lexer.h"
 
 typedef struct {
     SymbolTable *table;
@@ -12,9 +13,11 @@ typedef struct {
     char *root_func_name; // the name of the function that acts as the starting point
     AstNode *starting_point; // the starting point of the application. will be used by the code generator
     int error_count; // counts the number of semantic errors found
+
+    Lexer *lexer; // for error printing
 } SemanticAnalyzer;
 
-SemanticAnalyzer *init_semantic_analyzer(AstNode *root);
+SemanticAnalyzer *init_semantic_analyzer(AstNode *root, Lexer *lexer);
 
 int compare_types(DataType type_a, DataType type_b);
 
@@ -25,6 +28,8 @@ int semantic_analyze_tree(SemanticAnalyzer *analyzer);
 void semantic_analyze_block(SemanticAnalyzer *analyzer, List *block, AstNode *parent);
 
 void semantic_analyze_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
+
+void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, DataType target_type);
 
 void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 

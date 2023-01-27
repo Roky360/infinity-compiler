@@ -5,6 +5,11 @@
 #include "../../variable/variable.h"
 #include "../../ast/ast.h"
 
+typedef enum {
+    BYTE,
+    DWORD,
+} VarSize;
+
 typedef struct {
     char *func_name;
     List *arg_types;
@@ -14,6 +19,7 @@ typedef struct {
 typedef struct {
     char *var_name;
     DataType type;
+    VarSize var_size;
 } VariableSymbol;
 
 typedef enum {

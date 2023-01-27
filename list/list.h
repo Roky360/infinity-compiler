@@ -25,6 +25,8 @@ void list_push(List *list, void *item);
 
 void *list_pop(List *list);
 
+void list_clear(List *list);
+
 // inserts `item` at index `idx`
 void list_insert(List *list, int idx, void *item);
 

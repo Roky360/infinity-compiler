@@ -91,16 +91,19 @@ AstNode *parser_parse_expression(Parser *parser, Expression *expression) {
                 (Value) {.string_value = ((Token *) expression->tokens->items[0])->value}
         );
         if (expression->tokens->size > 1) {
-            throw_exception_with_trace(PARSER, parser->lexer, "Expected end of expression");
+            Token *err_token = (Token *) expression->tokens->items[1];
+            new_exception_with_trace(PARSER, parser->lexer, err_token->line, err_token->column,
+                                     err_token->length,
+                                     "Expected end of expression after string value");
         }
     } else {
         // parse expression
         if (evaluate_expression(expression->tokens, &res)) {
             expr_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {.double_value = res});
         } else {
-            // TODO: how to parse expressions with variables?
-            fprintf(stderr, "Expressions with variables are not supported right now\n");
-            exit(1);
+            expr_node->data.expression.contains_variables = 1;
+            expr_node->data.expression.tokens = expression->tokens;
+            expr_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
         }
     }
 
@@ -131,6 +134,22 @@ void parser_get_tokens_until(Parser *parser, List *tokens, TokenType terminator)
         list_push(tokens, parser_forward(parser, parser->token->type));
     }
     parser_forward(parser, terminator);
+}
+
+/* like parser_get_tokens_until, for expressions inside parentheses.
+ * makes sure that parentheses are closing correctly
+ * */
+void parser_get_parenthesized_expression(Parser *parser, List *tokens) {
+    int paren_count = 1;
+    parser_forward(parser, L_PARENTHESES);
+    while (paren_count > 0) {
+        list_push(tokens, parser_forward(parser, parser->token->type));
+        if (parser->token->type == L_PARENTHESES)
+            paren_count++;
+        else if (parser->token->type == R_PARENTHESES)
+            paren_count--;
+    }
+    parser_forward(parser, R_PARENTHESES);
 }
 
 AstNode *parser_parse_compound(Parser *parser) {
@@ -165,10 +184,17 @@ AstNode *parser_parse_statement(Parser *parser) {
     if (parser_func) {
         // call the right parsing function
         return parser_func(parser);
+    } else if (parser->token->type == SEMICOLON) {
+//        log_warning(parser->lexer, "Consider removing empty statements");
+        // TODO: replace with new warning log
+        new_log_curr_line(parser->lexer, parser->token->line, parser->token->column, parser->token->length);
+        log_debug(PARSER, "Consider removing empty statements");
+        parser_forward(parser, SEMICOLON);
+        return parser_parse_statement(parser);
     } else {
         // print error message
         new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
-                                 strlen(parser->token->value),
+                                 parser->token->length,
                                  "Expected an expression, got %s", token_type_to_str(parser->token->type));
         return NULL;
     }
@@ -307,25 +333,27 @@ AstNode *parser_parse_assignment(Parser *parser, Token *id_token) {
 
 AstNode *parser_parse_if_statement(Parser *parser) {
     char *warning;
-    AstNode *node;
+    AstNode *node, *condition_node;
     List *condition;
     node = init_ast(AST_IF_STATEMENT);
     condition = init_list(sizeof(Token *));
 
     parser_forward(parser, IF_KEYWORD);
     // parse boolean expression
-    parser_forward(parser, L_PARENTHESES);
-    parser_get_tokens_until(parser, condition, R_PARENTHESES);
-    node->data.if_statement.condition = init_ast(AST_EXPRESSION);
+    parser_get_parenthesized_expression(parser, condition);
+    condition_node = node->data.if_statement.condition = init_ast(AST_EXPRESSION);
     node->data.if_statement.condition->data.expression.tokens = condition;
     // TODO: change the type to int   ->                                                   \/
     node->data.if_statement.condition->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
-    if (evaluate_expression(node->data.if_statement.condition->data.expression.tokens,
-                            &node->data.if_statement.condition->data.expression.value->value.double_value)) {
+    if (evaluate_expression(condition_node->data.expression.tokens,
+                            &condition_node->data.expression.value->value.double_value)) {
         // TODO: move this to the analyzer
         alsprintf(&warning, "This if statement is always %s",
                   node->data.if_statement.condition->data.expression.value->value.double_value ? "true" : "false");
         log_warning(parser->lexer, warning);
+    } else {
+        condition_node->data.expression.contains_variables = 1;
+        condition_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
     }
 
     // parse the body

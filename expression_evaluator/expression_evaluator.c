@@ -20,6 +20,8 @@ char *print_ar_token(const void *item) {
             return t->value.op;
         case PAREN:
             return (char[]) {t->value.paren, 0};
+        case VAR:
+            return t->value.var;
     }
 }
 
@@ -30,10 +32,11 @@ ArithmeticToken *init_empty_arithmetic_token() {
     return tok;
 }
 
-ArithmeticToken *init_arithmetic_token_with(ArithmeticTokenType type, ArithmeticTokenValue value) {
+ArithmeticToken *init_arithmetic_token_with(ArithmeticTokenType type, ArithmeticTokenValue value, Token *original_tok) {
     ArithmeticToken *tok = init_empty_arithmetic_token();
     tok->type = type;
     tok->value = value;
+    tok->original_tok = original_tok;
     return tok;
 }
 
@@ -60,22 +63,28 @@ int is_right_associative(char *op) {
 }
 
 // returns if the expression can be parsed to a constant value (1), or it contains variables (0)
-int parse_tokens(const List *expression, List *tokens) {
+int parse_tokens(List *expression, List *tokens) {
     Token *token;
     ArithmeticToken *arithmeticToken;
     ArithmeticTokenType prev_token_type = -1;
-    char *conversion_res;
+    char *conversion_res, prev_paren = 0;
     int i, paren_count = 0, should_close_paren = 0;
+    int parsable = 1;
 
     for (i = 0; i < expression->size; i++) {
         // return false if expression contains variables
         token = expression->items[i];
-        if (token->type == ID) {
-            return 0;
-        }
         arithmeticToken = init_empty_arithmetic_token();
 
-        if (token->type == INT || token->type == DOUBLE || token->type == CHAR) {
+        if (token->type == ID) {
+            parsable = 0;
+            arithmeticToken->type = VAR;
+            arithmeticToken->value.var = token->value; // put the name of the variable in the `var` value
+            arithmeticToken->original_tok = token;
+            list_push(tokens, arithmeticToken);
+            prev_token_type = NUMBER;
+            prev_paren = 0;
+        } else if (token->type == INT || token->type == DOUBLE || token->type == CHAR) {
             // Number Token
             arithmeticToken->type = NUMBER;
             if (token->type == CHAR) {
@@ -87,6 +96,7 @@ int parse_tokens(const List *expression, List *tokens) {
                     exit(1);
                 }
             }
+            arithmeticToken->original_tok = token;
             list_push(tokens, arithmeticToken);
 
             // check that there are no two operands adjacent to each other, like 5 7 +
@@ -96,10 +106,11 @@ int parse_tokens(const List *expression, List *tokens) {
             }
             // close helper parentheses
             if (should_close_paren && paren_count == 0) {
-                list_push(tokens, init_arithmetic_token_with(PAREN, (ArithmeticTokenValue) {.paren = ')'}));
-                should_close_paren = 0;
+                list_push(tokens, init_arithmetic_token_with(PAREN, (ArithmeticTokenValue) {.paren = ')'}, NULL));
+                should_close_paren--;
             }
             prev_token_type = NUMBER;
+            prev_paren = 0;
         } else if (is_operator(token->value)) {
             // Operator or parenthesis arithmeticToken
             arithmeticToken->type = OPERATOR;
@@ -107,38 +118,43 @@ int parse_tokens(const List *expression, List *tokens) {
 
             // if current arithmeticToken is minus operator or not operator, and no operand was before it (like -1 or !true)
             if ((token->type == SUB_OP || token->type == NOT_OPERATOR_KEYWORD)
-                && prev_token_type != NUMBER && prev_token_type != PLACEHOLDER) {
-                list_push(tokens, init_arithmetic_token_with(PAREN, (ArithmeticTokenValue) {.paren = '('}));
+                && prev_token_type != NUMBER && prev_token_type != PLACEHOLDER && prev_paren != ')') {
+                list_push(tokens, init_arithmetic_token_with(PAREN, (ArithmeticTokenValue) {.paren = '('}, NULL));
                 if (token->type == NOT_OPERATOR_KEYWORD) { // placeholder token for "not" operator
                     list_push(tokens,
                               init_arithmetic_token_with(PLACEHOLDER,
-                                                         (ArithmeticTokenValue) {.op = NOT_OP_PLACEHOLDER}));
+                                                         (ArithmeticTokenValue) {.op = NOT_OP_PLACEHOLDER}, NULL));
                     prev_token_type = PLACEHOLDER;
                 } else { // dummy zero for minus operator
-                    list_push(tokens, init_arithmetic_token_with(NUMBER, (ArithmeticTokenValue) {.number = 0}));
+                    list_push(tokens, init_arithmetic_token_with(NUMBER, (ArithmeticTokenValue) {.number = 0}, NULL));
                     prev_token_type = OPERATOR;
                 }
-                should_close_paren = 1;
+                should_close_paren++;
             } else {
                 prev_token_type = OPERATOR;
             }
+            arithmeticToken->original_tok = token;
             list_push(tokens, arithmeticToken);
 
             if (token->type == FACTORIAL_OP) {
                 list_push(tokens,
-                          init_arithmetic_token_with(PLACEHOLDER, (ArithmeticTokenValue) {.op = FACT_OP_PLACEHOLDER}));
+                          init_arithmetic_token_with(PLACEHOLDER, (ArithmeticTokenValue) {.op = FACT_OP_PLACEHOLDER},
+                                                     NULL));
                 prev_token_type = PLACEHOLDER;
             }
+            prev_paren = 0;
         } else if (is_parentheses(token->type)) {
             arithmeticToken->type = PAREN;
             arithmeticToken->value.paren = *token->value;
 
+            arithmeticToken->original_tok = token;
             list_push(tokens, arithmeticToken);
             prev_token_type = PAREN;
+            prev_paren = arithmeticToken->value.paren;
             // update parentheses count
             paren_count += *token->value == '(' ? 1 : -1;
         } else {
-            fprintf(stderr, "Invalid character: %s\n", token->value);
+            fprintf(stderr, "Invalid token for an expression: %s\n", token->value);
             exit(1);
         }
     }
@@ -149,9 +165,9 @@ int parse_tokens(const List *expression, List *tokens) {
     }
     // check if a helper parentheses should be added
     if (should_close_paren)
-        list_push(tokens, init_arithmetic_token_with(PAREN, (ArithmeticTokenValue) {.paren = ')'}));
+        list_push(tokens, init_arithmetic_token_with(PAREN, (ArithmeticTokenValue) {.paren = ')'}, NULL));
 
-    return 1;
+    return parsable;
 }
 
 void infix_to_postfix(List *infix, List *postfix) {
@@ -161,7 +177,7 @@ void infix_to_postfix(List *infix, List *postfix) {
 
     for (int i = 0; i < infix->size; i++) {
         currToken = infix->items[i];
-        if (currToken->type == NUMBER || currToken->type == PLACEHOLDER) {
+        if (currToken->type == NUMBER || currToken->type == PLACEHOLDER || currToken->type == VAR) {
             list_push(postfix, currToken);
         } else if (currToken->type == OPERATOR) {
             while (!list_is_empty(operator_stack) &&
@@ -208,11 +224,11 @@ double evaluate_postfix(List *postfix) {
 
     for (i = 0; i < postfix->size; i++) {
         curr_token = postfix->items[i];
-        result_token = init_empty_arithmetic_token();
 
         if (curr_token->type == NUMBER || curr_token->type == PLACEHOLDER) {
             list_push(stack, curr_token);
         } else if (curr_token->type == OPERATOR) {
+            result_token = init_empty_arithmetic_token();
             right_token = list_pop(stack);
             left_token = list_pop(stack);
             if (!right_token || !left_token) {
@@ -231,52 +247,6 @@ double evaluate_postfix(List *postfix) {
                 exit(1);
             }
 
-            /*if (*curr_token->value.op == '+') {
-                result = a + b;
-            } else if (*curr_token->value.op == '-') {
-                result = a - b;
-            } else if (*curr_token->value.op == '*') {
-                result = a * b;
-            } else if (*curr_token->value.op == '/') {
-                if (b == 0) {
-                    fprintf(stderr, "Attempting to divide by zero (%.2f / 0)\n", a);
-                    exit(1);
-                }
-                result = a / b;
-            } else if (*curr_token->value.op == '^') {
-                result = pow(a, b);
-            } else if (*curr_token->value.op == '%') {
-                result = fmod(a, b);
-            } else if (*curr_token->value.op == '!') {
-                if (strcmp(right_token->value.op, FACT_OP_PLACEHOLDER) != 0) {
-                    fprintf(stderr, "Invalid expression\n");
-                    exit(1);
-                }
-                result = factorial(a);
-            } else if (!strcmp(curr_token->value.op, "and")) {
-                result = a && b;
-            } else if (!strcmp(curr_token->value.op, "or")) {
-                result = a || b;
-            } else if (!strcmp(curr_token->value.op, "not")) {
-                if (strcmp(left_token->value.op, NOT_OP_PLACEHOLDER) != 0) {
-                    fprintf(stderr, "Invalid expression\n");
-                    exit(1);
-                }
-                result = !b;
-            } else if (!strcmp(curr_token->value.op, "==")) {
-                result = a == b;
-            } else if (*curr_token->value.op == '>') {
-                result = a > b;
-            } else if (!strcmp(curr_token->value.op, ">=")) {
-                result = a >= b;
-            } else if (*curr_token->value.op == '<') {
-                result = a < b;
-            } else if (!strcmp(curr_token->value.op, "<=")) {
-                result = a <= b;
-            } else {
-                fprintf(stderr, "Invalid operator: %s\n", curr_token->value.op);
-                exit(1);
-            }*/
             result_token->type = NUMBER;
             result_token->value.number = result;
             list_push(stack, result_token);
@@ -294,23 +264,29 @@ double evaluate_postfix(List *postfix) {
 }
 
 /* expression is a list of tokens
- * Returns if the expression can be parsed, or it contains variables.
+ * Returns if the expression can be evaluated, or it contains variables.
+ * If it can be evaluated - the result is stored in `res` and returns true
+ * If not - `expression` will contain the postfix expression and false is returned
  * */
-int evaluate_expression(const List *expression, double *res) {
-    // TODO: if the expression contains vars, update the containing_vars field in the expression instance
+int evaluate_expression(List *expression, double *res) {
     List *infix, *postfix;
     infix = init_list(sizeof(ArithmeticToken *));
     postfix = init_list(sizeof(ArithmeticToken *));
 
-    if (!parse_tokens(expression, infix))
+    // if the expression contains variables, convert to postfix and return false
+    if (!parse_tokens(expression, infix)) {
+        list_clear(expression);
+        infix_to_postfix(infix, expression);
+//        list_print(infix, print_ar_token);
+//        list_print(expression, print_ar_token);
+//        exit(0);
         return 0;
+    }
     infix_to_postfix(infix, postfix);
-    list_print(infix, print_ar_token);
-    list_print(postfix, print_ar_token);
+//    list_print(infix, print_ar_token);
+//    list_print(postfix, print_ar_token);
     *res = evaluate_postfix(postfix);
-
-
-    printf(" = %f\n", *res);
+//    printf(" = %f\n", *res);
 
     list_dispose(infix);
     free(postfix);

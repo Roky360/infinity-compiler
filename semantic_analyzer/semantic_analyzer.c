@@ -4,11 +4,12 @@
 #include "../config/globals.h"
 #include "../io/io.h"
 #include "../config/table_initializers.h"
+#include "../expression_evaluator/expression_evaluator.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-SemanticAnalyzer *init_semantic_analyzer(AstNode *root) {
+SemanticAnalyzer *init_semantic_analyzer(AstNode *root, Lexer *lexer) {
     SemanticAnalyzer *analyzer = malloc(sizeof(SemanticAnalyzer));
     if (!analyzer)
         throw_memory_allocation_error(SEMANTIC_ANALYZER);
@@ -18,6 +19,7 @@ SemanticAnalyzer *init_semantic_analyzer(AstNode *root) {
     analyzer->root = root;
     analyzer->root_func_name = DEFAULT_ROOT_FUNCTION_NAME;
     analyzer->error_count = 0;
+    analyzer->lexer = lexer;
 
     return analyzer;
 }
@@ -123,6 +125,41 @@ void semantic_analyze_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNo
     }
 }
 
+/* analyzes expression for variables that are declared before usage
+ * if target_type is not NULL, it checks that the expression does not contain elements from few types,
+ * (for example, if the target var is int, an expression containing string is not allowed).
+ * if target_type is NULL, this check is ignored.
+ * */
+void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, DataType target_type) {
+    int i;
+    ArithmeticToken *curr_tok;
+    for (i = 0; i < expr->tokens->size; i++) {
+        curr_tok = expr->tokens->items[i];
+        // check for an id that is not defined
+        if (curr_tok->type == ID && scope_stack_lookup(analyzer->scope_stack, curr_tok->value.var) == NULL) {
+            new_exception_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_tok->original_tok->line,
+                                     curr_tok->original_tok->column,
+                                     curr_tok->original_tok->length,
+                                     "Target variable '%s' is not defined in the current scope. Try declaring it before usage: <variable_type> %s;",
+                                     curr_tok->value, curr_tok->value);
+        }
+        // if element is string and target var is not string, or the opposite
+        if (target_type != STRING && curr_tok->type == STRING) {
+            new_exception_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_tok->original_tok->line,
+                                     curr_tok->original_tok->column,
+                                     curr_tok->original_tok->length,
+                                     "String value cannot be assigned to %s variable",
+                                     data_type_to_str(target_type));
+        } else if (target_type == STRING && curr_tok->type != STRING) {
+            new_exception_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_tok->original_tok->line,
+                                     curr_tok->original_tok->column,
+                                     curr_tok->original_tok->length,
+                                     "%s cannot be assigned to a string variable",
+                                     data_type_to_str(target_type), data_type_to_str(target_type));
+        }
+    }
+}
+
 void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
     char *err_msg, *id_found;
 
@@ -143,16 +180,20 @@ void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *
         scope_stack_add_identifier(analyzer->scope_stack, strdup(node->data.variable_declaration.var->name));
     }
 
-    // check that the initial value that is has been assigned to the variable is of the same type
-    err_msg = validate_assignment(node->data.variable_declaration.var->value->type,
-                                  node->data.variable_declaration.value);
+    if (node->data.variable_declaration.value->data.expression.contains_variables) {
+        semantic_analyze_expression(analyzer, &node->data.variable_declaration.value->data.expression,
+                                    node->data.variable_declaration.var->value->type);
+    } else {
+        // check that the initial value that is has been assigned to the variable is of the same type
+        err_msg = validate_assignment(node->data.variable_declaration.var->value->type,
+                                      node->data.variable_declaration.value);
+    }
     if (err_msg) {
         // assignment invalid
         log_error(SEMANTIC_ANALYZER, err_msg);
     }
 }
 
-// TODO: stopped here. continue adding scope
 void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
     char *err_msg, *id_found;
     Symbol *target_var;
@@ -172,7 +213,16 @@ void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node, AstN
         log_error(SEMANTIC_ANALYZER, err_msg);
     }
 
-    validate_assignment(target_var->value.var_symbol.type, node->data.assignment.expression);
+    if (node->data.assignment.expression->data.expression.contains_variables) {
+        semantic_analyze_expression(analyzer, &node->data.assignment.expression->data.expression,
+                                    target_var->value.var_symbol.type);
+    } else {
+        err_msg = validate_assignment(target_var->value.var_symbol.type, node->data.assignment.expression);
+    }
+    if (err_msg) {
+        // assignment invalid
+        log_error(SEMANTIC_ANALYZER, err_msg);
+    }
 }
 
 void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
@@ -229,11 +279,28 @@ void semantic_analyze_loop_statement(SemanticAnalyzer *analyzer, AstNode *node, 
         log_error(SEMANTIC_ANALYZER, "Loop amount must be a natural number.");
     }
     // if loop goes backwards
-    if (node->data.loop.loop_counter_name && end > start) {
+    if (node->data.loop.loop_counter_name && end < start) {
         node->data.loop.forward = 0;
+    }
+    // if there is a loop counter
+    if (node->data.loop.loop_counter_name != NULL) {
+        scope_stack_push_scope(analyzer->scope_stack);
+        scope_stack_add_identifier(analyzer->scope_stack, node->data.loop.loop_counter_name);
+        symbol_table_insert(analyzer->table,
+                            VARIABLE,
+                            node->data.loop.loop_counter_name,
+                            (SymbolValue) {.var_symbol = (VariableSymbol) {
+                                    .var_name = node->data.loop.loop_counter_name,
+                                    .type = TYPE_INT
+                            }},
+                            node);
     }
     // analyze body
     semantic_analyze_block(analyzer, node->data.loop.body, parent);
+    if (node->data.loop.loop_counter_name != NULL) {
+        // pop the scope containing the loop counter
+        scope_stack_pop_scope(analyzer->scope_stack);
+    }
 }
 
 // parent should be function definition

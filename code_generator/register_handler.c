@@ -2,10 +2,13 @@
 #include "../logging/logging.h"
 #include "../io/io.h"
 #include "instruction_generators.h"
+#include "../config/globals.h"
 #include <stdlib.h>
 #include <string.h>
 
-char *reg_names[REGISTER_COUNT] = {EAX, EBX, ECX, EDX, ESI, EDI, EBP, ESP};
+char *reg_names[REGISTER_COUNT] = {EAX, EBX, ECX, EDX, ESI, EDI, EBP, ESP,
+                                   AH, AL, BH, BL, CH, CL, DH, DL};
+char *byte_registers[] = {AH, AL, BH, BL, CH, CL, DH, DL};
 
 RegisterHandler *init_register_handler() {
     int i;
@@ -35,7 +38,7 @@ Register *init_register(char *name) {
 }
 
 void register_handler_dispose(RegisterHandler *reg_handler) {
-    hash_table_dispose(reg_handler->registers_table);
+//    hash_table_dispose(reg_handler->registers_table);
     free(reg_handler);
 }
 
@@ -84,4 +87,26 @@ void register_handler_free_register(RegisterHandler *reg_handler, FILE *fp, char
     } else {
         reg->available = 1;
     }
+}
+
+int register_handler_is_register_byte(char *reg_name) {
+    int i;
+    for (i = 0; i < ARRLEN(byte_registers); i++) {
+        if (strcmp(byte_registers[i], reg_name) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+char *register_handler_get_lower_byte(char *reg_name) {
+    if (strcmp(reg_name, EAX) == 0) {
+        return AL;
+    } else if (strcmp(reg_name, EBX) == 0) {
+        return BL;
+    } else if (strcmp(reg_name, ECX) == 0) {
+        return CL;
+    } else if (strcmp(reg_name, EDX) == 0) {
+        return DL;
+    }
+    return NULL;
 }

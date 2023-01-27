@@ -16,6 +16,7 @@ void init_globals() {
     init_precedence_map();
     // code generator
     init_statement_to_generator_map();
+    init_operator_to_generator_map();
 }
 
 void clean_globals() {
@@ -31,4 +32,5 @@ void clean_globals() {
     hash_table_dispose(precedence_map);
     // code generator
     hash_table_dispose(statement_to_generator_map);
+    hash_table_dispose(operator_to_generator_map);
 }

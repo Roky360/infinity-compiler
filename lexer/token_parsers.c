@@ -66,6 +66,7 @@ Token *lexer_parse_string_token(Lexer *lexer, char *curr_char) {
         lexer_forward(lexer);
     }
     val[str_len - 1] = 0; // terminate string with '\0'
+    lexer_forward(lexer);
 
     return init_token(val, STRING, lexer->row, token_start, str_len);
 }

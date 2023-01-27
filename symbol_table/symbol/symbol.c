@@ -10,6 +10,20 @@ Symbol *init_symbol(SymbolType type, SymbolValue value, AstNode *initializer) {
     e->type = type;
     e->value = value;
     e->initializer = initializer;
+    if (type == VARIABLE) {
+        switch (value.var_symbol.type) {
+            case TYPE_CHAR:
+            case TYPE_BOOL:
+                e->value.var_symbol.var_size = BYTE;
+                break;
+            case TYPE_STRING:
+            case TYPE_INT:
+                e->value.var_symbol.var_size = DWORD;
+                break;
+            default:
+                break;
+        }
+    }
     return e;
 }
 

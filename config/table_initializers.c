@@ -8,6 +8,7 @@
 #include "../expression_evaluator/expression_evaluator.h"
 #include "../expression_evaluator/operator_appliers.h"
 #include "../code_generator/code_generator.h"
+#include "../code_generator/operator_generators/operator_generators.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -409,6 +410,57 @@ void init_statement_to_generator_map() {
                 statement_to_generator_map,
                 alsprintf(&id_ptr, "%d", ast_types[i]),
                 generator_funcs[i]
+        );
+    }
+}
+
+HashTable *operator_to_generator_map;
+
+void init_operator_to_generator_map() {
+    int i;
+    char *ops[] = { // keys
+            OP_ADD,
+            OP_SUB,
+            OP_MUL,
+            OP_DIV,
+            OP_POW,
+            OP_MOD,
+            OP_FACT,
+            OP_LOGICAL_AND,
+            OP_LOGICAL_OR,
+            OP_NOT,
+            OP_EQUALITY,
+            OP_NOT_EQUAL,
+            OP_GRATER_THAN,
+            OP_GRATER_EQUAL,
+            OP_LOWER_THAN,
+            OP_LOWER_EQUAL,
+    };
+    void (*applier_func[])(CodeGenerator *, char *, char *, char *, char *) = {
+            generate_op_addition,
+            generate_op_subtraction,
+            generate_op_multiplication,
+            generate_op_division,
+            generate_op_power,
+            generate_op_modulus,
+            generate_op_factorial,
+            generate_op_logical_and,
+            generate_op_logical_or,
+            generate_op_not,
+            generate_op_equality,
+            generate_op_not_equal,
+            generate_op_greater_than,
+            generate_op_greater_equal,
+            generate_op_lower_than,
+            generate_op_lower_equal,
+    };
+    operator_to_generator_map = init_hash_table(31, NULL); // no need to free the functions...
+
+    for (i = 0; i < ARRLEN(applier_func); i++) {
+        hash_table_insert(
+                operator_to_generator_map,
+                strdup(ops[i]),
+                applier_func[i]
         );
     }
 }

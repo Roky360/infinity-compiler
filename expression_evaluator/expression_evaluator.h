@@ -26,6 +26,7 @@
 #define FACT_OP_PLACEHOLDER "$f"
 
 typedef enum {
+    VAR,
     NUMBER,
     OPERATOR,
     PAREN,
@@ -33,6 +34,7 @@ typedef enum {
 } ArithmeticTokenType;
 
 typedef union {
+    char *var;
     double number;
     char *op;
     char paren;
@@ -41,13 +43,14 @@ typedef union {
 typedef struct {
     ArithmeticTokenType type;
     ArithmeticTokenValue value;
+    Token *original_tok;
 } ArithmeticToken;
 
 char *print_ar_token(const void *item);
 
 ArithmeticToken *init_empty_arithmetic_token();
 
-ArithmeticToken *init_arithmetic_token_with(ArithmeticTokenType type, ArithmeticTokenValue value);
+ArithmeticToken *init_arithmetic_token_with(ArithmeticTokenType type, ArithmeticTokenValue value, Token *original_tok);
 
 int is_operator(char *op);
 
@@ -57,12 +60,12 @@ int get_precedence(char *op);
 
 int is_right_associative(char *op);
 
-int parse_tokens(const List *expression, List *tokens);
+int parse_tokens(List *expression, List *tokens);
 
 void infix_to_postfix(List *infix, List *postfix);
 
 double evaluate_postfix(List *postfix);
 
-int evaluate_expression(const List *expression, double *res);
+int evaluate_expression(List *expression, double *res);
 
 #endif //INFINITY_COMPILER_EXPRESSION_EVALUATOR_H

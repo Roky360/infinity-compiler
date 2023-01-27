@@ -1,22 +1,19 @@
 start main;
-
+// todo: make function arguments work as regular arguments
 func main() -> int {
-    int x = 2;
-    char chr;
-    //x = not 4!;
+    int x;
+    //x = 5*2^(x! / 1 - 2) - (-p);
 
-    //int x = 'd';
-    //x = 2 + x / 5;         // x 2 x 5 / + =
-    //x = 5*2^(4! / 8 - 2);   // x=4
+    int p = 1;
 
-    //bool a = true;
-    //a = 10; // fix this!!
-
-    int y;
+    loop i: 10 times {
+        x = x + p;
+        p = p + 1;
+    }
 
     return 1;
 }
-
+/-
 func f() {
     int x = 10;
     int y = 4;
@@ -27,5 +24,8 @@ func f() {
         loop 5 times {
             x = 12;
         }
+        loop i: 4+3 times {
+        loop i: 4+3 to 432*2 times {
     }
 }
+-/

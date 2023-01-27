@@ -26,7 +26,7 @@ void compiler_compile(char *src, char *output_path) {
     // parse
     root = parser_parse(parser);
     // analyze tree
-    analyzer = init_semantic_analyzer(root);
+    analyzer = init_semantic_analyzer(root, lexer);
     error_count = semantic_analyze_tree(analyzer);
     if (error_count > 0) {
         alsprintf(&msg, "Found %d error%s", error_count, error_count > 1 ? "s" : "");

@@ -45,4 +45,8 @@ extern HashTable *statement_to_generator_map;
 
 void init_statement_to_generator_map();
 
+extern HashTable *operator_to_generator_map;
+
+void init_operator_to_generator_map();
+
 #endif //INFINITY_COMPILER_TABLE_INITIALIZERS_H
