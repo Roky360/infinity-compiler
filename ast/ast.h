@@ -80,9 +80,10 @@ typedef struct {
  Perform code block a certain amount of times
 */
 typedef struct {
-    int start;
-    int end;
+    Expression *start;
+    Expression *end;
     char *loop_counter_name;
+    unsigned int loop_counter_col;
     int forward; // whether the loop counter (if there is one) advances forwards or backwards
     List *body;
 } Loop;

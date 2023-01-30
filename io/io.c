@@ -80,7 +80,7 @@ char *get_file_extension(char *filename) {
 
 char *get_file_name(char *path) {
     char *p = path + strlen(path) - 1;
-    while (*--p != '/')
+    while (*--p != '/' && *p != '\\')
         if (p == path) // if file name does not contain extension
             return path;
     return p + 1;

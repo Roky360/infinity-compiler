@@ -171,7 +171,7 @@ void generate_complicated_arithmetic_expression(CodeGenerator *generator, List *
     int i;
     List *stack;
     ArithmeticToken *curr_token, *result_token, *left_token, *right_token;
-    double (*applier_func)(CodeGenerator *, char *, char *, char *, char *);
+    double (*applier_func)(CodeGenerator *, char *, char *, char *, char *, int);
     char *eax, *ebx, *format;
 
     stack = init_list(sizeof(ArithmeticToken *));
@@ -212,7 +212,8 @@ void generate_complicated_arithmetic_expression(CodeGenerator *generator, List *
             applier_func = hash_table_lookup(operator_to_generator_map, curr_token->value.op);
             if (applier_func) {
                 applier_func(generator, eax, ebx, left_token->type == PLACEHOLDER ? left_token->value.op : "",
-                             right_token->type == PLACEHOLDER ? right_token->value.op : "");
+                             right_token->type == PLACEHOLDER ? right_token->value.op : "",
+                             i == postfix_expr_lst->size - 1);
             } else {
                 fprintf(stderr, "Invalid operator: %s\n", curr_token->value.op);
                 exit(1);
@@ -224,7 +225,6 @@ void generate_complicated_arithmetic_expression(CodeGenerator *generator, List *
         }
     }
     list_pop(stack); // pop last element - the "result"
-    write_to_file(generator->fp, POP, eax);
     if (!list_is_empty(stack)) {
         fprintf(stderr, "Invalid expression\n");
         exit(1);
@@ -327,17 +327,29 @@ void generate_if_statement(CodeGenerator *generator, AstNode *node) {
 
 void generate_simple_loop(CodeGenerator *generator, AstNode *node) {
     char *ecx;
-    char *loop_count, *loop_label;
+    char *loop_count, *loop_label, *end_loop_label;
     ecx = register_handler_request_register(generator->reg_handler, generator->fp, ECX);
     loop_label = generate_label();
 
-    write_to_file(generator->fp, MOV, ecx, alsprintf(&loop_count, "%d", node->data.loop.end));
+    // if end expression needs evaluation
+    if (node->data.loop.end->contains_variables) {
+        end_loop_label = generate_label();
+        generate_arithmetic_expression(generator, node->data.loop.end);
+        write_to_file(generator->fp, MOV, ecx, EAX);
+        write_to_file(generator->fp, CMP, ecx, "0");
+        write_to_file(generator->fp, JNG, end_loop_label);
+    } else {
+        write_to_file(generator->fp, MOV, ecx,
+                      alsprintf(&loop_count, "%d", (int) node->data.loop.end->value->value.double_value));
+    }
     write_to_file(generator->fp, LABEL_DEF, loop_label);
 
     // generate loop body
     generate_block(generator, node->data.loop.body);
 
     write_to_file(generator->fp, LOOP, loop_label);
+    if (node->data.loop.end->contains_variables)
+        write_to_file(generator->fp, LABEL_DEF, end_loop_label);
     write_to_file(generator->fp, "\n");
 
     register_handler_free_register(generator->reg_handler, generator->fp, ecx);
@@ -345,24 +357,61 @@ void generate_simple_loop(CodeGenerator *generator, AstNode *node) {
 }
 
 void generate_loop_with_counter(CodeGenerator *generator, AstNode *node) {
-    char *loop_label = generate_label(), *loop_end_label = generate_label();
-    char *loop_counter_inc = node->data.loop.forward ? INC : DEC, *jmp_type = node->data.loop.forward ? JGE : JLE;
+    char *loop_label = generate_label(), *loop_end_label = generate_label(), *inc_label = generate_label();
     char *loop_counter = node->data.loop.loop_counter_name;
-    char *form2, *loop_counter_form = alsprintf(&loop_counter_form, "[%s]", get_var_name_formatted(loop_counter));
-    write_to_file(generator->fp, MOV, loop_counter_form,
-                  alsprintf(&form2, "%d", node->data.loop.start));
-    free(form2);
+    char *form2, *loop_counter_form = alsprintf(&loop_counter_form, "dword [%s]", get_var_name_formatted(loop_counter));
+    int loop_range_is_expression = 0;
+    char *edi = register_handler_request_register(generator->reg_handler, generator->fp, EDI);
+
+    // if end expression needs evaluation
+    if (node->data.loop.end->contains_variables) {
+        loop_range_is_expression = 1;
+        generate_arithmetic_expression(generator, node->data.loop.end);
+
+        write_to_file(generator->fp, MOV, edi, EAX); // store `end` in EDI
+        write_to_file(generator->fp, CMP, loop_counter_form, edi);
+    } else {
+        write_to_file(generator->fp, MOV, edi,
+                      alsprintf(&form2, "%d",
+                                (int) node->data.loop.end->value->value.double_value)); // store `end` in EDI
+        free(form2);
+    }
+    // if start expression needs evaluation
+    if (node->data.loop.start->contains_variables) {
+        loop_range_is_expression = 1;
+        // evaluate start expression, result in EAX
+        generate_arithmetic_expression(generator, node->data.loop.start);
+        write_to_file(generator->fp, MOV, loop_counter_form, EAX);
+    } else {
+        write_to_file(generator->fp, MOV, loop_counter_form,
+                      alsprintf(&form2, "%d", (int) node->data.loop.start->value->value.double_value));
+        free(form2);
+    }
+
     write_to_file(generator->fp, LABEL_DEF, loop_label);
-    write_to_file(generator->fp, CMP, loop_counter_form, alsprintf(&form2, "%d", node->data.loop.end));
-    write_to_file(generator->fp, jmp_type, loop_label);
+
+    write_to_file(generator->fp, CMP, loop_counter_form, edi);
+    write_to_file(generator->fp, JE, loop_end_label);
+    write_to_file(generator->fp, "\n");
     // generate loop body
     generate_block(generator, node->data.loop.body);
-    write_to_file(generator->fp, loop_counter_inc, alsprintf(&loop_counter_form, "dword %s", loop_counter_form));
-    write_to_file(generator->fp, JMP, loop_label);
+    // if the start or the end is an expression
+    if (loop_range_is_expression) {
+        write_to_file(generator->fp, CMP, loop_counter_form, edi);
+        write_to_file(generator->fp, JL, inc_label);
+        write_to_file(generator->fp, DEC, loop_counter_form);
+        write_to_file(generator->fp, JMP, loop_label);
+        write_to_file(generator->fp, LABEL_DEF, inc_label);
+        write_to_file(generator->fp, INC, loop_counter_form);
+        write_to_file(generator->fp, JMP, loop_label);
+    } else {
+        write_to_file(generator->fp, node->data.loop.forward ? INC : DEC, loop_counter_form);
+        write_to_file(generator->fp, JMP, loop_label);
+    }
     write_to_file(generator->fp, LABEL_DEF, loop_end_label);
 
     free(loop_counter_form);
-    free(form2);
+    register_handler_free_register(generator->reg_handler, generator->fp, edi);
 }
 
 void generate_loop(CodeGenerator *generator, AstNode *node) {

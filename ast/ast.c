@@ -98,11 +98,14 @@ AstNode *init_ast_if_statement(AstNode *node) {
 
 AstNode *init_ast_loop(AstNode *node) {
     node->data = (AstData) {.loop = (Loop) {
-            .start = 0,
+            .start = init_expression_p(),
+            .end = init_expression_p(),
             .loop_counter_name = NULL,
             .forward = 1,
             .body = init_list(sizeof(AstNode *))
     }};
+    node->data.loop.start->value = init_literal_value(TYPE_INT, (Value) {.double_value = 0});
+    node->data.loop.end->value = init_literal_value(TYPE_INT, (Value) {.double_value = 0});
     return node;
 }
 

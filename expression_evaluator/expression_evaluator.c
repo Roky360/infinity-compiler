@@ -97,13 +97,20 @@ int parse_tokens(List *expression, List *tokens) {
                 }
             }
             arithmeticToken->original_tok = token;
-            list_push(tokens, arithmeticToken);
 
             // check that there are no two operands adjacent to each other, like 5 7 +
             if (prev_token_type == NUMBER) {
-                fprintf(stderr, "Missing operator between operands");
-                exit(1);
+                if (arithmeticToken->value.number < 0) {
+                    // for expressions like 1-7 where "-7" is read together as one number, and an operator is missing
+                    list_push(tokens, init_arithmetic_token_with(OPERATOR, (ArithmeticTokenValue) {.op = "-"}, NULL));
+                    arithmeticToken->value.number *= -1;
+                } else {
+                    fprintf(stderr, "Missing operator between operands");
+                    exit(1);
+                }
             }
+            list_push(tokens, arithmeticToken);
+
             // close helper parentheses
             if (should_close_paren && paren_count == 0) {
                 list_push(tokens, init_arithmetic_token_with(PAREN, (ArithmeticTokenValue) {.paren = ')'}, NULL));
@@ -275,7 +282,7 @@ int evaluate_expression(List *expression, double *res) {
 
     // if the expression contains variables, convert to postfix and return false
     if (!parse_tokens(expression, infix)) {
-        list_clear(expression);
+        list_clear(expression, 0);
         infix_to_postfix(infix, expression);
 //        list_print(infix, print_ar_token);
 //        list_print(expression, print_ar_token);

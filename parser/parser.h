@@ -27,6 +27,8 @@ LiteralValue *get_default_literal_value(TokenType type);
 
 void parser_get_tokens_until(Parser *parser, List *tokens, TokenType terminator);
 
+Token *parser_get_tokens_until_list(Parser *parser, List *tokens, TokenType *terminators, int term_len);
+
 void parser_get_parenthesized_expression(Parser *parser, List *tokens);
 
 AstNode *parser_parse_compound(Parser *parser);

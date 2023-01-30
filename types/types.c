@@ -21,6 +21,7 @@ void literal_value_dispose(LiteralValue *value) {
 Expression *init_expression_p() {
     Expression *expr = malloc(sizeof(Expression));
     expr->tokens = init_list(sizeof(Token *));
+    expr->contains_variables = 0;
     return expr;
 }
 

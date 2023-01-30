@@ -136,6 +136,21 @@ void parser_get_tokens_until(Parser *parser, List *tokens, TokenType terminator)
     parser_forward(parser, terminator);
 }
 
+Token *parser_get_tokens_until_list(Parser *parser, List *tokens, TokenType *terminators, int term_len) {
+    int done = 0, i;
+    while (!done) {
+        for (i = 0; i < term_len; i++) {
+            if (parser->token->type == terminators[i]) {
+                done = 1;
+                break;
+            }
+        }
+        if (!done)
+            list_push(tokens, parser_forward(parser, parser->token->type));
+    }
+    return parser_forward(parser, parser->token->type);
+}
+
 /* like parser_get_tokens_until, for expressions inside parentheses.
  * makes sure that parentheses are closing correctly
  * */
@@ -371,12 +386,51 @@ AstNode *parser_parse_if_statement(Parser *parser) {
 }
 
 AstNode *parser_parse_loop(Parser *parser) {
-    int start;
+    Expression *start;
     Token *prev;
     AstNode *node = init_ast(AST_LOOP);
+    node->data.loop.start->tokens = init_list(sizeof(Token *));
+    start = init_expression_p();
+    start->value = init_literal_value(TYPE_DOUBLE, (Value) {});
 
     parser_forward(parser, LOOP_KEYWORD);
-    switch (parser->token->type) {
+    prev = parser_get_tokens_until_list(parser, start->tokens, (TokenType[]) {COLON, TIMES_KEYWORD}, 2);
+    if (list_is_empty(start->tokens))
+        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+                                 "Expected an expression");
+    if (prev->type == COLON) { // with counter
+        // pick loop counter name
+        node->data.loop.loop_counter_name = ((Token *) start->tokens->items[0])->value;
+        node->data.loop.loop_counter_col = ((Token *) start->tokens->items[0])->column;
+
+        list_clear(start->tokens, 1);
+        prev = parser_get_tokens_until_list(parser, start->tokens, (TokenType[]) {TO_KEYWORD, TIMES_KEYWORD}, 2);
+        if (list_is_empty(start->tokens))
+            new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+                                     "Expected an expression");
+        if (!evaluate_expression(start->tokens, &start->value->value.double_value)) {
+            start->contains_variables = 1;
+        }
+        if (prev->type == TIMES_KEYWORD) { // i: ▨ times
+            node->data.loop.end = start;
+        } else { // i: _ to ▨ times
+            node->data.loop.start = start;
+            parser_get_tokens_until(parser, node->data.loop.end->tokens, TIMES_KEYWORD);
+            if (list_is_empty(node->data.loop.end->tokens))
+                new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+                                         "Expected an expression");
+            if (!evaluate_expression(node->data.loop.end->tokens, &node->data.loop.end->value->value.double_value)) {
+                node->data.loop.end->contains_variables = 1;
+            }
+        }
+    } else { // without counter: loop ▨ times
+        node->data.loop.end = start;
+        if (!evaluate_expression(node->data.loop.end->tokens, &node->data.loop.end->value->value.double_value)) {
+            node->data.loop.end->contains_variables = 1;
+        }
+    }
+
+/*    switch (parser->token->type) {
         // simple loop
         case INT:
             node->data.loop.end = atoi(parser_forward(parser, INT)->value);
@@ -412,7 +466,8 @@ AstNode *parser_parse_loop(Parser *parser) {
                                      "* `loop i: 3 times` to also have access to a named loop counter inside the loop that runs from 0 to 2\n"
                                      "* `loop i: 5 to 10 times` to set a custom range to the loop counter (here from 5 to 9)");
             break;
-    }
+    }*/
+
     // parse loop body
     parser_parse_block(parser, node->data.loop.body);
 

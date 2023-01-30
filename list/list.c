@@ -59,9 +59,13 @@ void *list_pop(List *list) {
     return val;
 }
 
-void list_clear(List *list) {
-    while (!list_is_empty(list))
-        free(list_pop(list));
+void list_clear(List *list, int free_content) {
+    if (free_content)
+        while (!list_is_empty(list))
+            free(list_pop(list));
+    else
+        while (!list_is_empty(list))
+            list_pop(list);
 }
 
 void list_insert(List *list, int idx, void *item) {

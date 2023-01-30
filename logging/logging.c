@@ -37,8 +37,13 @@ void log_curr_line(const Lexer *lexer) {
     printf("\n%*s |  %*s^\n", rowNoLen, "", lexer->col, "");
 }
 
-void log_debug(Caller caller, const char *msg) {
-    printf("[%s] %s\n\n", caller_type_to_str(caller), msg);
+void log_debug(Caller caller, const char *format, ...) {
+    va_list args;
+    char *msg_formatted;
+    va_start(args, format);
+    vprintf(alsprintf(&msg_formatted, "[%s] %s\n\n", caller_type_to_str(caller), format), args);
+    free(msg_formatted);
+    va_end(args);
 }
 
 void log_error(Caller caller, const char *msg) {
@@ -86,8 +91,8 @@ void new_log_curr_line(const Lexer *lexer, unsigned int line, unsigned int col, 
 #endif
 }
 
-void new_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
-                              char *msg, ...) {
+void message_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
+                        char *msg, ...) {
     char *format;
     va_list args;
     va_start(args, msg);
@@ -100,6 +105,14 @@ void new_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int li
     new_log_curr_line(lexer, line, col, mark_length);
 
     free(format);
+    va_end(args);
+}
+
+void new_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
+                              char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+    message_with_trace(caller, lexer, line, col, mark_length, msg, args);
     va_end(args);
     exit(1);
 }

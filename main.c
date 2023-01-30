@@ -7,11 +7,13 @@
 
 /*
 // TODO: add EOF proof to parser
-
- TODO: make `loop` support expressions, not just constants
+ TODO: define strings in the data segment
 
 // TODO: better logging system (add row and col to each token + add colors)
 // TODO: in the new logging system, change that the logging method will accept va_list, instead if calling alsprintf before..
+
+ TODO: function calls
+ TODO: print function
 
 // TODO: support one-line functions :D
 */
@@ -21,7 +23,7 @@ int main(int argc, char **argv) {
     // check that target file is specified
     if (argc < 2) {
         printf("Please provide target file path as a command line argument.\n"
-               "Usage: %s target_file.%s\n", argv[0], INPUT_EXTENSION);
+               "Usage: %s target_file.%s\n", get_file_name(argv[0]), INPUT_EXTENSION);
         exit(0);
     }
     // check file extension
@@ -42,7 +44,6 @@ int main(int argc, char **argv) {
     }
 
     compiler_compile_file(argv[1], output_path);
-    printf("Done\n");
 
     return 0;
 }

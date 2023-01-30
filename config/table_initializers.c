@@ -436,7 +436,7 @@ void init_operator_to_generator_map() {
             OP_LOWER_THAN,
             OP_LOWER_EQUAL,
     };
-    void (*applier_func[])(CodeGenerator *, char *, char *, char *, char *) = {
+    void (*applier_func[])(CodeGenerator *, char *, char *, char *, char *, int) = {
             generate_op_addition,
             generate_op_subtraction,
             generate_op_multiplication,
