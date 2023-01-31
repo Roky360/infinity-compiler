@@ -56,7 +56,8 @@ typedef enum TokenType {
     MODULUS_OP,
     POWER_OP,
     FACTORIAL_OP,
-    ARROW,
+    ARROW, // ->
+    THICK_ARROW, // =>
     DEC,
     INC,
 

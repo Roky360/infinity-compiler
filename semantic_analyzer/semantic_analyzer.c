@@ -1,5 +1,4 @@
 #include "semantic_analyzer.h"
-#include "../symbol_table/symbol/symbol.h"
 #include "../logging/logging.h"
 #include "../config/globals.h"
 #include "../io/io.h"
@@ -22,6 +21,12 @@ SemanticAnalyzer *init_semantic_analyzer(AstNode *root, Lexer *lexer) {
     analyzer->lexer = lexer;
 
     return analyzer;
+}
+
+void semantic_analyzer_dispose(SemanticAnalyzer *analyzer) {
+    symbol_table_dispose(analyzer->table);
+    scope_stack_dispose(analyzer->scope_stack);
+    free(analyzer);
 }
 
 /**
@@ -94,8 +99,35 @@ int semantic_analyze_tree(SemanticAnalyzer *analyzer) {
  * */
 void semantic_analyze_block(SemanticAnalyzer *analyzer, List *block, AstNode *parent) {
     int i;
+    AstNode *curr_node;
+    char *id_found;
     // add new scope
     scope_stack_push_scope(analyzer->scope_stack);
+    // add all functions to scope
+    for (i = 0; i < block->size; i++) {
+        curr_node = (AstNode *) block->items[i];
+        if (curr_node->type == AST_FUNCTION_DEFINITION) {
+            id_found = scope_stack_lookup(analyzer->scope_stack, curr_node->data.function_definition.func_name);
+            if (id_found) {
+                log_debug(SEMANTIC_ANALYZER, "Function '%s' already defined",
+                          curr_node->data.function_definition.func_name);
+                analyzer->error_count += 1;
+            } else {
+                symbol_table_insert(analyzer->table,
+                                    FUNCTION,
+                                    curr_node->data.function_definition.func_name,
+                                    (SymbolValue) {.func_symbol = (FunctionSymbol) {
+                                            .func_name = curr_node->data.function_definition.func_name,
+                                            .arg_types = curr_node->data.function_definition.args,
+                                            .returned = 0
+                                    }},
+                                    curr_node);
+                scope_stack_add_identifier(analyzer->scope_stack,
+                                           strdup(curr_node->data.function_definition.func_name));
+            }
+        }
+    }
+    // analyze all the statements in the block
     for (i = 0; i < block->size; i++) {
         semantic_analyze_statement(analyzer, (AstNode *) block->items[i], parent);
     }
@@ -227,24 +259,6 @@ void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node, AstN
 }
 
 void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
-    char *errMsg, *id_found;
-    id_found = scope_stack_lookup(analyzer->scope_stack, node->data.function_definition.func_name);
-    if (id_found) {
-        log_debug(SEMANTIC_ANALYZER, "Function '%s' already defined", node->data.function_definition.func_name);
-        analyzer->error_count += 1;
-    } else {
-        symbol_table_insert(analyzer->table,
-                            FUNCTION,
-                            node->data.function_definition.func_name,
-                            (SymbolValue) {.func_symbol = (FunctionSymbol) {
-                                    .func_name = node->data.function_definition.func_name,
-                                    .arg_types = node->data.function_definition.args,
-                                    .returned = 0
-                            }},
-                            node);
-        scope_stack_add_identifier(analyzer->scope_stack, strdup(node->data.function_definition.func_name));
-    }
-
     // analyze function body
     semantic_analyze_block(analyzer, node->data.function_definition.body, node);
     // check if return statement was met, and the function supposed to return something
@@ -260,7 +274,6 @@ void semantic_analyze_start_statement(SemanticAnalyzer *analyzer, AstNode *node,
 }
 
 void semantic_analyze_if_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
-    char *err_msg;
     DataType condition_type = node->data.if_statement.condition->data.expression.value->type;
     if (condition_type != TYPE_INT && condition_type != TYPE_DOUBLE) {
         log_debug(SEMANTIC_ANALYZER, "Condition in if statement should have a boolean value, not %s",
@@ -323,7 +336,6 @@ void semantic_analyze_loop_statement(SemanticAnalyzer *analyzer, AstNode *node, 
 
 // parent should be function definition
 void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
-    char *errMsg;
     DataType parent_return_type = parent->data.function_definition.returnType;
     DataType return_type = node->data.return_statement.value_expr->data.expression.value->type;
     // void function does not supposed to return anything
@@ -344,8 +356,35 @@ void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node
     node->data.return_statement.parent_function_arg_count = parent->data.function_definition.args->size;
 }
 
-void semantic_analyzer_dispose(SemanticAnalyzer *analyzer) {
-    symbol_table_dispose(analyzer->table);
-    scope_stack_dispose(analyzer->scope_stack);
-    free(analyzer);
+void semantic_analyze_function_call(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
+    int i;
+    Symbol *target_func = symbol_table_lookup(analyzer->table, node->data.function_call.func_name);
+
+    // check if function exists
+    if (target_func == NULL) {
+        log_debug(SEMANTIC_ANALYZER, "Function %s does not exist in the current context",
+                  node->data.function_call.func_name);
+        analyzer->error_count += 1;
+        return; // cant analyze a function that does not exist
+    }
+    if (target_func->type != FUNCTION) {
+        log_debug(SEMANTIC_ANALYZER, "This identifier is not callable: %s",
+                  node->data.function_call.func_name);
+        analyzer->error_count += 1;
+    }
+
+    // check that the count of the arguments is matching with the target function
+    if (node->data.function_call.args->size != target_func->value.func_symbol.arg_types->size) {
+        log_debug(SEMANTIC_ANALYZER, "Expecting %d arguments to pass to %s, got %d.",
+                  target_func->value.func_symbol.arg_types->size, target_func->value.func_symbol.func_name,
+                  node->data.function_call.args->size);
+        analyzer->error_count += 1;
+        return; // cant check the arguments if not the correct amount is passed
+    }
+
+    // check every argument
+    for (i = 0; i < node->data.function_call.args->size; i++) {
+        semantic_analyze_expression(analyzer, &((AstNode *) node->data.function_call.args->items[i])->data.expression,
+                                    ((Variable *) target_func->value.func_symbol.arg_types->items[i])->value->type);
+    }
 }

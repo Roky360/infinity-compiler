@@ -100,6 +100,8 @@ char *token_type_to_str(TokenType type) {
             return "<POWER_OP>";
         case ARROW:
             return "<ARROW>";
+        case THICK_ARROW:
+            return "<THICK_ARROW>";
         case DEC:
             return "<DEC>";
         case INC:

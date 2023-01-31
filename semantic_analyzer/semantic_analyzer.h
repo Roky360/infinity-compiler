@@ -19,6 +19,8 @@ typedef struct {
 
 SemanticAnalyzer *init_semantic_analyzer(AstNode *root, Lexer *lexer);
 
+void semantic_analyzer_dispose(SemanticAnalyzer *analyzer);
+
 int compare_types(DataType type_a, DataType type_b);
 
 char *validate_assignment(DataType type_dst, AstNode *value_node);
@@ -45,6 +47,6 @@ void semantic_analyze_loop_statement(SemanticAnalyzer *analyzer, AstNode *node, 
 
 void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 
-void semantic_analyzer_dispose(SemanticAnalyzer *analyzer);
+void semantic_analyze_function_call(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 
 #endif //INFINITY_COMPILER_SEMANTIC_ANALYZER_H

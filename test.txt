@@ -1,18 +1,21 @@
 start main;
-// todo: make function arguments work as regular arguments
+
 func main() -> int {
     int x = 3;
     int p = 23;
     //x = 5*2^(x! / 1 - 2) - (-p);
 
-    if (x > 10) {
-        loop i: 5 times {
-            x = x + p;
-            p = p + 1;
-        }
-    } else {
-        x = -100;
-    }
+    bismach(1 + 3 * 40 / 8);
 
     return 1;
 }
+
+func bismach(int x) -> int {
+    int x = 5 + 40 / 8;
+    int y = x - 7;
+
+    return y;
+}
+
+// one-line functions :D
+func pow(int x) -> int => x * x;

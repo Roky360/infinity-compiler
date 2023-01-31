@@ -4,7 +4,7 @@
 #include "../lexer/lexer.h"
 #include "../ast/ast.h"
 
-typedef struct ParserStruct {
+typedef struct Parser {
     Lexer *lexer;
     Token *token;
 } Parser;
@@ -52,5 +52,7 @@ AstNode *parser_parse_if_statement(Parser *parser);
 AstNode *parser_parse_loop(Parser *parser);
 
 AstNode *parser_parse_return_statement(Parser *parser);
+
+AstNode *parser_parse_function_call(Parser *parser, Token *id_token);
 
 #endif //INFINITY_COMPILER_PARSER_H

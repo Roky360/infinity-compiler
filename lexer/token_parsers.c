@@ -8,6 +8,10 @@ Token *lexer_parse_equal_char(Lexer *lexer, char *curr_char) {
         lexer_forward(lexer);
         lexer_forward(lexer);
         return init_token("==", EQUALS, lexer->row, token_start, 2);
+    } else if (lexer_peek(lexer, 1) == '>') {
+        lexer_forward(lexer);
+        lexer_forward(lexer);
+        return init_token("=>", THICK_ARROW, lexer->row, token_start, 2);
     } else {
         lexer_forward(lexer);
         return init_token(curr_char, ASSIGNMENT, lexer->row, token_start, 1);

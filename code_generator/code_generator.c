@@ -184,7 +184,8 @@ void generate_complicated_arithmetic_expression(CodeGenerator *generator, List *
         if (curr_token->type == NUMBER) {
             list_push(stack, curr_token);
             write_to_file(generator->fp, MOV, eax, alsprintf(&format, "%d", (int) curr_token->value.number));
-            write_to_file(generator->fp, PUSH, eax);
+            if (i != postfix_expr_lst->size - 1) // if not last element
+                write_to_file(generator->fp, PUSH, eax);
             free(format);
         } else if (curr_token->type == PLACEHOLDER) {
             list_push(stack, curr_token);
@@ -198,7 +199,8 @@ void generate_complicated_arithmetic_expression(CodeGenerator *generator, List *
                 write_to_file(generator->fp, MOV, eax,
                               alsprintf(&format, "[%s]", get_var_name_formatted(curr_token->value.var)));
             }
-            write_to_file(generator->fp, PUSH, eax);
+            if (i != postfix_expr_lst->size - 1) // if not last element
+                write_to_file(generator->fp, PUSH, eax);
             free(format);
         } else if (curr_token->type == OPERATOR) {
             result_token = init_empty_arithmetic_token();
@@ -304,7 +306,16 @@ void generate_function(CodeGenerator *generator, AstNode *node) {
     free(proc_name);
 }
 
-void generate_function_call(CodeGenerator *generator, AstNode *node) {}
+void generate_function_call(CodeGenerator *generator, AstNode *node) {
+    int i;
+    for (i = node->data.function_call.args->size - 1; i >= 0; i--) {
+        generate_arithmetic_expression(generator,
+                                       &((AstNode *) node->data.function_call.args->items[i])->data.expression);
+        write_to_file(generator->fp, PUSH, EXPR_RES_REG); // push each argument
+    }
+    write_to_file(generator->fp, CALL, get_proc_name_formatted(node->data.function_call.func_name)); // call function
+    write_to_file(generator->fp, "\n");
+}
 
 void generate_if_statement(CodeGenerator *generator, AstNode *node) {
     char *false_label = generate_label(), *done_if = generate_label();
@@ -323,6 +334,7 @@ void generate_if_statement(CodeGenerator *generator, AstNode *node) {
 
     write_to_file(generator->fp, "\n");
     free(false_label);
+    free(done_if);
 }
 
 void generate_simple_loop(CodeGenerator *generator, AstNode *node) {
@@ -348,8 +360,10 @@ void generate_simple_loop(CodeGenerator *generator, AstNode *node) {
     generate_block(generator, node->data.loop.body);
 
     write_to_file(generator->fp, LOOP, loop_label);
-    if (node->data.loop.end->contains_variables)
+    if (node->data.loop.end->contains_variables) {
         write_to_file(generator->fp, LABEL_DEF, end_loop_label);
+        free(end_loop_label);
+    }
     write_to_file(generator->fp, "\n");
 
     register_handler_free_register(generator->reg_handler, generator->fp, ecx);

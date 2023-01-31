@@ -221,8 +221,7 @@ AstNode *parser_parse_id(Parser *parser) {
         case ASSIGNMENT:
             return parser_parse_assignment(parser, id_token);
         case L_PARENTHESES:
-//            return parser_parse_function_call();
-            return NULL;
+            return parser_parse_function_call(parser, id_token);
         case SEMICOLON:
             log_warning(parser->lexer, "Expression has no affect. Consider removing this expression.");
             parser_forward(parser, SEMICOLON);
@@ -283,7 +282,8 @@ AstNode *parser_parse_var_declaration(Parser *parser) {
 AstNode *parser_parse_function_definition(Parser *parser) {
     Variable *arg;
     DataType argType;
-    AstNode *node = init_ast(AST_FUNCTION_DEFINITION);
+    Expression *return_expr; // for one-line functions
+    AstNode *return_node, *node = init_ast(AST_FUNCTION_DEFINITION);
 
     parser_forward(parser, FUNC_KEYWORD);
 
@@ -315,7 +315,6 @@ AstNode *parser_parse_function_definition(Parser *parser) {
     // get return type
     if (parser->token->type == ARROW) {
         parser_forward(parser, ARROW);
-        /*TODO:here*/
         node->data.function_definition.returnType =
                 (DataType) parser_forward_with_list(parser, data_types, data_types_len, "return type")->type;
         if (node->data.function_definition.returnType == TYPE_DOUBLE) {
@@ -326,8 +325,19 @@ AstNode *parser_parse_function_definition(Parser *parser) {
         node->data.function_definition.returnType = TYPE_VOID;
     }
 
-    // parse function body
-    parser_parse_block(parser, node->data.function_definition.body);
+    // one-line function
+    if (parser->token->type == THICK_ARROW) {
+        parser_forward(parser, THICK_ARROW);
+        return_node = init_ast(AST_RETURN_STATEMENT);
+        return_expr = init_expression_p();
+
+        parser_get_tokens_until(parser, return_expr->tokens, SEMICOLON);
+        return_node->data.return_statement.value_expr = parser_parse_expression(parser, return_expr);
+        list_push(node->data.function_definition.body, return_node);
+    } else {
+        // parse function body
+        parser_parse_block(parser, node->data.function_definition.body);
+    }
 
     return node;
 }
@@ -482,6 +492,32 @@ AstNode *parser_parse_return_statement(Parser *parser) {
 
     parser_get_tokens_until(parser, expr->tokens, SEMICOLON);
     node->data.return_statement.value_expr = parser_parse_expression(parser, expr);
+
+    return node;
+}
+
+AstNode *parser_parse_function_call(Parser *parser, Token *id_token) {
+    Token *prev_tok;
+    AstNode *arg_node;
+    AstNode *node = init_ast(AST_FUNCTION_CALL);
+    node->data.function_call.func_name = id_token->value;
+
+    parser_forward(parser, L_PARENTHESES);
+    prev_tok = parser->token;
+    if (prev_tok->type == R_PARENTHESES)
+        parser_forward(parser, R_PARENTHESES);
+    while (prev_tok->type != R_PARENTHESES) {
+        arg_node = init_ast(AST_EXPRESSION);
+        prev_tok = parser_get_tokens_until_list(parser, arg_node->data.expression.tokens,
+                                                (TokenType[]) {COMMA, R_PARENTHESES}, 2);
+        // TODO: \/ support string arguments \/
+        arg_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
+        arg_node->data.expression.contains_variables =
+                !evaluate_expression(arg_node->data.expression.tokens,
+                                     &arg_node->data.expression.value->value.double_value);
+        list_push(node->data.function_call.args, arg_node);
+    }
+    parser_forward(parser, SEMICOLON);
 
     return node;
 }

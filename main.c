@@ -9,10 +9,12 @@
 // TODO: add EOF proof to parser
  TODO: define strings in the data segment
 
-// TODO: better logging system (add row and col to each token + add colors)
+// TODO: better logging system (add row and col to each token + colors)
 // TODO: in the new logging system, change that the logging method will accept va_list, instead if calling alsprintf before..
 
  TODO: function calls
+ TODO: - define args as regular variables, and add analysis to them
+
  TODO: print function
 
 // TODO: support one-line functions :D
@@ -47,15 +49,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-
-// Evaluator issues
-
-//#include <stdio.h>
-//#include "expression_evaluator/exp_eval_backup.c"
-//int main(int argc, char **argv) {
-//    char *expression = calloc(100, sizeof(char));
-//    while (1) {
-//        gets(expression);
-//        printf("%f\n", evaluate_expression(expression));
-//    }
-//}
