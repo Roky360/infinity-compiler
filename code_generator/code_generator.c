@@ -434,6 +434,23 @@ void generate_loop(CodeGenerator *generator, AstNode *node) {
     : generate_simple_loop(generator, node);
 }
 
+void generate_while_loop(CodeGenerator *generator, AstNode *node) {
+    char *while_label = generate_label(), *end_loop = generate_label();
+    write_to_file(generator->fp, LABEL_DEF, while_label);
+    generate_arithmetic_expression(generator, &node->data.while_loop.condition->data.expression);
+    write_to_file(generator->fp, CMP, EAX, "0");
+    write_to_file(generator->fp, JE, end_loop);
+    write_to_file(generator->fp, "\n");
+    // generate body
+    generate_block(generator, node->data.while_loop.body);
+
+    write_to_file(generator->fp, JMP, while_label);
+    write_to_file(generator->fp, LABEL_DEF, end_loop);
+
+    free(while_label);
+    free(end_loop);
+}
+
 void generate_return_statement(CodeGenerator *generator, AstNode *node) {
     unsigned int arg_count = node->data.return_statement.parent_function_arg_count;
 

@@ -158,11 +158,12 @@ void parser_get_parenthesized_expression(Parser *parser, List *tokens) {
     int paren_count = 1;
     parser_forward(parser, L_PARENTHESES);
     while (paren_count > 0) {
-        list_push(tokens, parser_forward(parser, parser->token->type));
         if (parser->token->type == L_PARENTHESES)
             paren_count++;
         else if (parser->token->type == R_PARENTHESES)
             paren_count--;
+        if (paren_count > 0)
+            list_push(tokens, parser_forward(parser, parser->token->type));
     }
     parser_forward(parser, R_PARENTHESES);
 }
@@ -248,7 +249,8 @@ AstNode *parser_parse_var_declaration(Parser *parser) {
     node = init_ast(AST_VARIABLE_DECLARATION);
     var_type = parser_forward_with_list(parser, data_types, data_types_len, "type definition");
     if (var_type->type == DOUBLE) { // doubles not supported
-        throw_exception_with_trace(PARSER, parser->lexer, "Variables of type double are not supported yet");
+        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+                                 parser->token->length, "Variables of type double are not supported yet");
     }
     node->data.variable_declaration.var = init_variable(
             parser_forward(parser, ID)->value,
@@ -263,7 +265,8 @@ AstNode *parser_parse_var_declaration(Parser *parser) {
         parser_get_tokens_until(parser, expr->tokens, SEMICOLON);
         node->data.variable_declaration.value = parser_parse_expression(parser, expr);
         if (node->data.variable_declaration.value->data.expression.value->type == TYPE_VOID) {
-            throw_exception_with_trace(PARSER, parser->lexer, "Expected an expression");
+            new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+                                     parser->token->length, "Expected an expression");
         }
     } else {
         // variable is initialized with default value_expr
@@ -318,7 +321,8 @@ AstNode *parser_parse_function_definition(Parser *parser) {
         node->data.function_definition.returnType =
                 (DataType) parser_forward_with_list(parser, data_types, data_types_len, "return type")->type;
         if (node->data.function_definition.returnType == TYPE_DOUBLE) {
-            throw_exception_with_trace(PARSER, parser->lexer, "Doubles are not supported yet");
+            new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+                                     parser->token->length, "Doubles are not supported yet");
         }
     } else {
         // return type not provided - default is void
@@ -366,6 +370,10 @@ AstNode *parser_parse_if_statement(Parser *parser) {
     parser_forward(parser, IF_KEYWORD);
     // parse boolean expression
     parser_get_parenthesized_expression(parser, condition);
+    if (condition->size == 0) {
+        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+                                 "Expected an expression in if condition");
+    }
     condition_node = node->data.if_statement.condition = init_ast(AST_EXPRESSION);
     node->data.if_statement.condition->data.expression.tokens = condition;
     // TODO: change the type to int   ->                                                   \/
@@ -518,6 +526,42 @@ AstNode *parser_parse_function_call(Parser *parser, Token *id_token) {
         list_push(node->data.function_call.args, arg_node);
     }
     parser_forward(parser, SEMICOLON);
+
+    return node;
+}
+
+AstNode *parser_parse_while_loop(Parser *parser) {
+    AstNode *node, *condition_node;
+    List *condition;
+    char *warning;
+    node = init_ast(AST_WHILE_LOOP);
+    condition = init_list(sizeof(Token *));
+
+    parser_forward(parser, WHILE_KEYWORD);
+    // parse boolean expression
+    parser_get_parenthesized_expression(parser, condition);
+    if (condition->size == 0) {
+        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+                                 "Expected an expression in while condition");
+    }
+    condition_node = node->data.while_loop.condition = init_ast(AST_EXPRESSION);
+    node->data.while_loop.condition->data.expression.tokens = condition;
+    // TODO: change the type to int   ->                                                   \/
+    node->data.while_loop.condition->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
+    if (evaluate_expression(condition_node->data.expression.tokens,
+                            &condition_node->data.expression.value->value.double_value)) {
+        // TODO: move this to the analyzer
+        if ((int) node->data.while_loop.condition->data.expression.value->value.double_value) {
+            log_warning(parser->lexer, "Infinite loop - condition in while loop is always true");
+        } else {
+            log_warning(parser->lexer, "While loop condition is always false");
+        }
+    } else {
+        condition_node->data.expression.contains_variables = 1;
+        condition_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
+    }
+
+    parser_parse_block(parser, node->data.while_loop.body);
 
     return node;
 }

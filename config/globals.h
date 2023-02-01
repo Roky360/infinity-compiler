@@ -7,7 +7,7 @@
 
 /** Debug Flags */
 #define INF_DEBUG
-//#define INF_SHOW_COLORS
+#define INF_SHOW_COLORS
 
 /** Defines */
 #define INPUT_EXTENSION "txt"

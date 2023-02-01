@@ -26,6 +26,7 @@ typedef enum TokenType {
     LOOP_KEYWORD,
     TO_KEYWORD,
     TIMES_KEYWORD,
+    WHILE_KEYWORD,
 
     AND_OPERATOR_KEYWORD,
     OR_OPERATOR_KEYWORD,

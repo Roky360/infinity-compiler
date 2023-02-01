@@ -58,6 +58,8 @@ char *token_type_to_str(TokenType type) {
             return "<TO_KEYWORD>";
         case TIMES_KEYWORD:
             return "<TIMES_KEYWORD>";
+        case WHILE_KEYWORD:
+            return "<WHILE_KEYWORD>";
         case L_PARENTHESES:
             return "<LEFT_PARENTHESES>";
         case R_PARENTHESES:

@@ -277,6 +277,8 @@ double evaluate_postfix(List *postfix) {
  * */
 int evaluate_expression(List *expression, double *res) {
     List *infix, *postfix;
+    if (expression->size == 0)
+        return 0;
     infix = init_list(sizeof(ArithmeticToken *));
     postfix = init_list(sizeof(ArithmeticToken *));
 

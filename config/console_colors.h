@@ -74,4 +74,27 @@
 //Reset
 #define RESET "\e[0m"
 
+/** Unicode Colors */
+//Regular text
+#define UNI_BLACK L"\e[0;30m"
+#define UNI_RED L"\e[0;31m"
+#define UNI_GREEN L"\e[0;32m"
+#define UNI_YELLOW L"\e[0;33m"
+#define UNI_BLUE L"\e[0;34m"
+#define UNI_MAGENTA L"\e[0;35m"
+#define UNI_CYAN L"\e[0;36m"
+#define UNI_WHITE L"\e[0;37m"
+
+//Regular bold text
+#define UNI_BLACK_B L"\e[1;30m"
+#define UNI_RED_B L"\e[1;31m"
+#define UNI_GREEN_B L"\e[1;32m"
+#define UNI_YELLOW_B L"\e[1;33m"
+#define UNI_BLUE_B L"\e[1;34m"
+#define UNI_MAGENTA_B L"\e[1;35m"
+#define UNI_CYAN_B L"\e[1;36m"
+#define UNI_WHITE_B L"\e[1;37m"
+
+#define UNI_RESET L"\e[0m"
+
 #endif //INFINITY_COMPILER_CONSOLE_COLORS_H

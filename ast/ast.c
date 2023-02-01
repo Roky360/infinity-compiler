@@ -29,6 +29,8 @@ AstNode *init_ast(AstType type) {
             return init_ast_if_statement(ast);
         case AST_LOOP:
             return init_ast_loop(ast);
+        case AST_WHILE_LOOP:
+            return init_ast_while_loop(ast);
         case AST_RETURN_STATEMENT:
             return init_ast_return_statement(ast);
         case AST_NOOP:
@@ -106,6 +108,13 @@ AstNode *init_ast_loop(AstNode *node) {
     }};
     node->data.loop.start->value = init_literal_value(TYPE_INT, (Value) {.double_value = 0});
     node->data.loop.end->value = init_literal_value(TYPE_INT, (Value) {.double_value = 0});
+    return node;
+}
+
+AstNode *init_ast_while_loop(AstNode *node) {
+    node->data = (AstData) {.while_loop = (WhileLoop) {
+            .body = init_list(sizeof(AstNode *)),
+    }};
     return node;
 }
 

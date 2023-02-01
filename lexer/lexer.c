@@ -111,7 +111,7 @@ Token *lexer_parse_number_token(Lexer *lexer) {
 
     res = strtod(val, &conversion_res);
     if (*conversion_res != '\0') {
-        throw_exception_with_trace(LEXER, lexer, "Illegal number");
+        new_exception_with_trace(LEXER, lexer, lexer->row, lexer->col - val_len + 1, val_len, "Illegal number");
     }
 
     return (res == (int) res)
@@ -128,15 +128,12 @@ void lexer_skip_one_line_comment(Lexer *lexer) {
 }
 
 void lexer_skip_multi_line_comment(Lexer *lexer) {
-    unsigned int row = lexer->row, col = lexer->col, idx = lexer->idx;
+    unsigned int row = lexer->row, col = lexer->col;
     lexer_forward(lexer);
     lexer_forward(lexer);
     while (!(lexer->c == '-' && lexer_peek(lexer, 1) == '/')) {
         if (lexer->c == 0) {
-            lexer->row = row;
-            lexer->col = col;
-            lexer->idx = idx;
-            throw_exception_with_trace(LEXER, lexer, "Comment unclosed at end of file");
+            new_exception_with_trace(LEXER, lexer, row, col, 2, "Comment unclosed at end of file");
         }
         lexer_forward(lexer);
     }

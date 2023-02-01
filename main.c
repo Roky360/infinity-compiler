@@ -4,6 +4,9 @@
 #include "config/globals.h"
 #include "compiler/compiler.h"
 #include "io/io.h"
+#include "logging/logging.h"
+
+#include <fcntl.h>
 
 /*
 // TODO: add EOF proof to parser
@@ -16,12 +19,9 @@
  TODO: - define args as regular variables, and add analysis to them
 
  TODO: print function
-
-// TODO: support one-line functions :D
 */
 int main(int argc, char **argv) {
     char *output_path;
-
     // check that target file is specified
     if (argc < 2) {
         printf("Please provide target file path as a command line argument.\n"

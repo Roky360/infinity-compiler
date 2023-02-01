@@ -45,6 +45,8 @@ void semantic_analyze_if_statement(SemanticAnalyzer *analyzer, AstNode *node, As
 
 void semantic_analyze_loop_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 
+void semantic_analyze_while_loop(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
+
 void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 
 void semantic_analyze_function_call(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);

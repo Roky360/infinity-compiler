@@ -70,6 +70,8 @@ void generate_loop_with_counter(CodeGenerator *generator, AstNode *node);
 
 void generate_loop(CodeGenerator *generator, AstNode *node);
 
+void generate_while_loop(CodeGenerator *generator, AstNode *node);
+
 void generate_return_statement(CodeGenerator *generator, AstNode *node);
 
 #endif //INFINITY_COMPILER_CODE_GENERATOR_H

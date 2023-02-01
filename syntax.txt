@@ -5,13 +5,16 @@ define N 4
 -/
 start main;
 
+// one-line functions :D
+func my_pow(int x) -> int => x * x;
+
 // if return type not specified, default is void
 func main(int argc, Array<string> argv) -> int {
     int x = (50 + 7) / 3^(4 - 3!) - 1;
     string s = "hello world";
     bool b = true;
     Array<int> arr = [1, 2, 3];
-    Array<int> arr = [1, 2, 3];
+    [int] arr = [1, 2, 3];
 
     if (x > 4) {
         x = 0;
@@ -32,6 +35,8 @@ func main(int argc, Array<string> argv) -> int {
         // another option for a short for-loop is the second line that assigns the loop counter to a variable
         // third option is a custom range to the loop counter (all values must be integers)
     }
+
+    my_pow(1 + 2 * 40 / 5);
 
     // THINK HOW TO IMPLEMENT PRINT
     print(x);

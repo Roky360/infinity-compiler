@@ -85,7 +85,8 @@ Token *lexer_parse_char_token(Lexer *lexer, char *curr_char) {
     val[0] = lexer->c;
     lexer_forward(lexer);
     if (lexer->c != '\'') {
-        throw_exception_with_trace(LEXER, lexer, "Char literal should contain only one character");
+        new_exception_with_trace(LEXER, lexer, lexer->row, lexer->col - 2, 3,
+                                 "Char literal should contain only one character");
     }
     lexer_forward(lexer);
 

@@ -29,6 +29,7 @@ void init_ast_type_to_analyzer_table() {
             AST_FUNCTION_CALL,
             AST_IF_STATEMENT,
             AST_LOOP,
+            AST_WHILE_LOOP,
             AST_RETURN_STATEMENT,
     };
     void (*values[])(SemanticAnalyzer *, AstNode *, AstNode *) = {
@@ -39,6 +40,7 @@ void init_ast_type_to_analyzer_table() {
             semantic_analyze_function_call,
             semantic_analyze_if_statement,
             semantic_analyze_loop_statement,
+            semantic_analyze_while_loop,
             semantic_analyze_return_statement,
     };
     ast_type_to_analyzer_map = init_hash_table(19, NULL); // no need to free the functions...
@@ -67,6 +69,7 @@ void init_statement_to_parser_table() {
             STRING_KEYWORD,
             IF_KEYWORD,
             LOOP_KEYWORD,
+            WHILE_KEYWORD,
             RETURN_KEYWORD,
     };
     AstNode *(*values[])(Parser *) = {
@@ -79,9 +82,10 @@ void init_statement_to_parser_table() {
             parser_parse_var_declaration,
             parser_parse_if_statement,
             parser_parse_loop,
+            parser_parse_while_loop,
             parser_parse_return_statement,
     };
-    statement_to_parser_map = init_hash_table(19, NULL); // no need to free the functions...
+    statement_to_parser_map = init_hash_table(23, NULL); // no need to free the functions...
 
     for (i = 0; i < ARRLEN(keys); i++) {
         hash_table_insert(
@@ -232,6 +236,7 @@ void init_id_to_keyword_map() {
             VALUE_LOOP_KEYWORD,
             VALUE_TO_KEYWORD,
             VALUE_TIMES_KEYWORD,
+            VALUE_WHILE_KEYWORD,
             VALUE_START_KEYWORD,
             VALUE_TRUE_KEYWORD,
             VALUE_FALSE_KEYWORD,
@@ -252,6 +257,7 @@ void init_id_to_keyword_map() {
             LOOP_KEYWORD,
             TO_KEYWORD,
             TIMES_KEYWORD,
+            WHILE_KEYWORD,
             START_KEYWORD,
             INT,
             INT,
@@ -392,6 +398,7 @@ void init_statement_to_generator_map() {
             AST_FUNCTION_CALL,
             AST_IF_STATEMENT,
             AST_LOOP,
+            AST_WHILE_LOOP,
             AST_RETURN_STATEMENT,
     };
     void (*generator_funcs[])(CodeGenerator *, AstNode *) = { // values
@@ -401,6 +408,7 @@ void init_statement_to_generator_map() {
             generate_function_call,
             generate_if_statement,
             generate_loop,
+            generate_while_loop,
             generate_return_statement,
     };
     statement_to_generator_map = init_hash_table(19, NULL);

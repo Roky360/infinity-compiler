@@ -17,6 +17,7 @@
 #define VALUE_LOOP_KEYWORD "loop"
 #define VALUE_TO_KEYWORD "to"
 #define VALUE_TIMES_KEYWORD "times"
+#define VALUE_WHILE_KEYWORD "while"
 #define VALUE_START_KEYWORD "start"
 #define VALUE_TRUE_KEYWORD "true"
 #define VALUE_FALSE_KEYWORD "false"

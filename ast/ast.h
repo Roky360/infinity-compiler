@@ -89,6 +89,15 @@ typedef struct {
 } Loop;
 
 /**
+\WhileLoop
+ Perform code block while a condition is true
+*/
+typedef struct {
+    AstNode *condition;
+    List *body; // list of AST nodes
+} WhileLoop;
+
+/**
 \ReturnStatement
  Return value_expr from a function.
 */
@@ -107,6 +116,7 @@ typedef enum {
     AST_FUNCTION_CALL,
     AST_IF_STATEMENT,
     AST_LOOP,
+    AST_WHILE_LOOP,
     AST_RETURN_STATEMENT,
     AST_NOOP, // no operation
 } AstType;
@@ -121,6 +131,7 @@ typedef union {
     FunctionCall function_call;
     IfStatement if_statement;
     Loop loop;
+    WhileLoop while_loop;
     ReturnStatement return_statement;
 } AstData;
 
@@ -150,6 +161,8 @@ AstNode *init_ast_function_call(AstNode *node);
 AstNode *init_ast_if_statement(AstNode *node);
 
 AstNode *init_ast_loop(AstNode *node);
+
+AstNode *init_ast_while_loop(AstNode *node);
 
 AstNode *init_ast_return_statement(AstNode *node);
 

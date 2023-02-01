@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <fcntl.h>
 
 char *caller_type_to_str(Caller caller) {
     switch (caller) {
@@ -54,13 +55,6 @@ void log_error(Caller caller, const char *msg) {
 void log_warning(const Lexer *lexer, const char *msg) {
     log_curr_line(lexer);
     printf("[Warning] %s\n", msg);
-}
-
-void throw_exception_with_trace(Caller caller, const Lexer *lexer, const char *msg) {
-    log_curr_line(lexer);
-    log_debug(caller, msg);
-
-    exit(1);
 }
 
 void new_log_curr_line(const Lexer *lexer, unsigned int line, unsigned int col, int mark_length) {
@@ -124,4 +118,39 @@ void new_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int li
 
 void throw_memory_allocation_error(Caller caller) {
     log_error(caller, "Can't allocate memory.");
+}
+
+void log_raw_debug(Caller caller, const char *color, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+#ifdef INF_SHOW_COLORS
+    if (color)
+        printf("%s", color);
+#endif
+    printf("[%s] ", caller_type_to_str(caller));
+    vprintf(format, args);
+#ifdef INF_SHOW_COLORS
+    printf(RESET);
+#endif
+    va_end(args);
+}
+
+void set_unicode_mode() {
+    _setmode(_fileno(stdout), _O_U16TEXT); // set unicode mode
+}
+
+void set_ascii_mode() {
+    _setmode(_fileno(stdout), _O_TEXT); // set ascii mode
+}
+
+void print_unicode(const wchar_t *color, const wchar_t *format) {
+    set_unicode_mode();
+#ifdef INF_SHOW_COLORS
+    wprintf(color);
+#endif
+    wprintf(format);
+#ifdef INF_SHOW_COLORS
+    wprintf(UNI_RESET);
+#endif
+    set_ascii_mode();
 }

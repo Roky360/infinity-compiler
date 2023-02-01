@@ -62,7 +62,7 @@ char *validate_assignment(DataType type_dst, AstNode *value_node) {
         if (type_dst == TYPE_BOOL &&
             value_node->data.expression.value->value.double_value != 0 &&
             value_node->data.expression.value->value.double_value != 1) {
-            return strdup("Illegal value_node to a boolean variable. The allowed values are true (1) or false (0)");
+            return strdup("Illegal value to a boolean variable. The allowed values are true (1) or false (0)");
         }
     }
     return NULL; // OK
@@ -334,10 +334,17 @@ void semantic_analyze_loop_statement(SemanticAnalyzer *analyzer, AstNode *node, 
     }
 }
 
+void semantic_analyze_while_loop(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
+    semantic_analyze_expression(analyzer, &node->data.while_loop.condition->data.expression, TYPE_BOOL);
+    // analyze body
+    semantic_analyze_block(analyzer, node->data.while_loop.body, parent);
+}
+
 // parent should be function definition
 void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
     DataType parent_return_type = parent->data.function_definition.returnType;
     DataType return_type = node->data.return_statement.value_expr->data.expression.value->type;
+    double double_return_val = node->data.return_statement.value_expr->data.expression.value->value.double_value;
     // void function does not supposed to return anything
     if (parent_return_type == TYPE_VOID && return_type != TYPE_VOID) {
         log_debug(SEMANTIC_ANALYZER, "Function %s does not supposed to return anything",
@@ -348,6 +355,11 @@ void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node
     if (!compare_types(return_type, parent_return_type)) {
         log_debug(SEMANTIC_ANALYZER, "Type mismatch: Returning %s from a function that supposed to return %s",
                   data_type_to_str(return_type), data_type_to_str(parent_return_type));
+        analyzer->error_count += 1;
+    }
+    if (parent_return_type == TYPE_BOOL && double_return_val != 0 && double_return_val != 1) {
+        log_debug(SEMANTIC_ANALYZER, "Value %.3f is not boolean, as expected to be returned from %s",
+                  double_return_val, parent->data.function_definition.func_name);
         analyzer->error_count += 1;
     }
     // mark that the function has reached a return statement
@@ -375,8 +387,10 @@ void semantic_analyze_function_call(SemanticAnalyzer *analyzer, AstNode *node, A
 
     // check that the count of the arguments is matching with the target function
     if (node->data.function_call.args->size != target_func->value.func_symbol.arg_types->size) {
-        log_debug(SEMANTIC_ANALYZER, "Expecting %d arguments to pass to %s, got %d.",
-                  target_func->value.func_symbol.arg_types->size, target_func->value.func_symbol.func_name,
+        log_debug(SEMANTIC_ANALYZER, "Expecting %d argument%s to pass to %s, got %d.",
+                  target_func->value.func_symbol.arg_types->size,
+                  target_func->value.func_symbol.arg_types->size == 1 ? "" : "s",
+                  target_func->value.func_symbol.func_name,
                   node->data.function_call.args->size);
         analyzer->error_count += 1;
         return; // cant check the arguments if not the correct amount is passed
