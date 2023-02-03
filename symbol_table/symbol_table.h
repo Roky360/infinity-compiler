@@ -3,11 +3,13 @@
 
 #include "symbol/symbol.h"
 #include "../hash_table/hash_table.h"
+#include "string_repository/string_repository.h"
 #include <stdio.h>
 
 typedef struct {
     HashTable *table;
     List *var_symbols; // final list of var_symbols that will be generated in the application by the code generator
+    StringRepository *str_repo; // a table that stores all the string literals in the program
 } SymbolTable;
 
 SymbolTable *init_symbol_table();

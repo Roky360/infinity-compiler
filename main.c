@@ -4,14 +4,8 @@
 #include "config/globals.h"
 #include "compiler/compiler.h"
 #include "io/io.h"
-#include "logging/logging.h"
-
-#include <fcntl.h>
 
 /*
-// TODO: add EOF proof to parser
- TODO: define strings in the data segment
-
 // TODO: better logging system (add row and col to each token + colors)
 // TODO: in the new logging system, change that the logging method will accept va_list, instead if calling alsprintf before..
 
@@ -25,7 +19,8 @@ int main(int argc, char **argv) {
     // check that target file is specified
     if (argc < 2) {
         printf("Please provide target file path as a command line argument.\n"
-               "Usage: %s target_file.%s\n", get_file_name(argv[0]), INPUT_EXTENSION);
+               "Usage: %s target_file_path.%s [output_file_path.%s]\n",
+               get_file_name(argv[0]), INPUT_EXTENSION, OUTPUT_EXTENSION);
         exit(0);
     }
     // check file extension
@@ -41,8 +36,7 @@ int main(int argc, char **argv) {
             exit(0);
         }
     } else {
-        output_path = alsprintf(&output_path, DEFAULT_OUTPUT_PATH "%s", get_file_name(argv[1]));
-        change_file_extension(output_path, OUTPUT_EXTENSION);
+        output_path = change_file_extension(strdup(argv[1]), OUTPUT_EXTENSION);
     }
 
     compiler_compile_file(argv[1], output_path);

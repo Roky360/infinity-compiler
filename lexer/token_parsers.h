@@ -22,4 +22,7 @@ Token *lexer_parse_plus_char(Lexer *lexer, char *curr_char);
 
 Token *lexer_parse_exclamation_char(Lexer *lexer, char *curr_char);
 
+// ---
+char get_escape_character(Lexer *lexer);
+
 #endif //INFINITY_COMPILER_TOKEN_PARSERS_H

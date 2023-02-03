@@ -4,6 +4,7 @@
 #include "../io/io.h"
 #include "../config/table_initializers.h"
 #include "../expression_evaluator/expression_evaluator.h"
+#include "../symbol_table/string_repository/string_symbol.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +46,7 @@ int compare_types(DataType type_a, DataType type_b) {
  * Returns the error message according to the error found. If the assignment is valid, returns NULL.
  * Every error message is allocated, so it has to be freed after usage.
  * */
-char *validate_assignment(DataType type_dst, AstNode *value_node) {
+char *validate_assignment(SemanticAnalyzer *analyzer, DataType type_dst, AstNode *value_node) {
     char *msg;
     DataType value_type = value_node->data.expression.value->type;
     if (value_node->type == AST_FUNCTION_CALL) {
@@ -63,6 +64,11 @@ char *validate_assignment(DataType type_dst, AstNode *value_node) {
             value_node->data.expression.value->value.double_value != 0 &&
             value_node->data.expression.value->value.double_value != 1) {
             return strdup("Illegal value to a boolean variable. The allowed values are true (1) or false (0)");
+        }
+        if (value_type == TYPE_STRING) {
+            // add string literals to the strings table
+            string_repository_add_string_identifier(analyzer->table->str_repo,
+                                                    strdup(value_node->data.expression.value->value.string_value));
         }
     }
     return NULL; // OK
@@ -163,7 +169,7 @@ void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, D
     ArithmeticToken *curr_tok;
     for (i = 0; i < expr->tokens->size; i++) {
         curr_tok = expr->tokens->items[i];
-        // check for an id that is not defined
+        // check for an value that is not defined
         if (curr_tok->type == ID && scope_stack_lookup(analyzer->scope_stack, curr_tok->value.var) == NULL) {
             message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_tok->original_tok->line,
                                curr_tok->original_tok->column,
@@ -173,13 +179,19 @@ void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, D
             analyzer->error_count += 1;
         }
         // if element is string and target var is not string, or the opposite
-        if (target_type != -1 && target_type != STRING && curr_tok->type == STRING) {
-            message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_tok->original_tok->line,
-                               curr_tok->original_tok->column,
-                               curr_tok->original_tok->length,
-                               "String value cannot be assigned to %s variable",
-                               data_type_to_str(target_type));
-            analyzer->error_count += 1;
+        if (curr_tok->type == STRING) {
+            // add string literals to the strings table
+            string_repository_add_string_identifier(analyzer->table->str_repo,
+                                                    strdup(curr_tok->original_tok->value));
+
+            if (target_type != -1 && target_type != STRING) {
+                message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_tok->original_tok->line,
+                                   curr_tok->original_tok->column,
+                                   curr_tok->original_tok->length,
+                                   "String value cannot be assigned to %s variable",
+                                   data_type_to_str(target_type));
+                analyzer->error_count += 1;
+            }
         } else if (target_type == STRING && curr_tok->type != STRING) {
             message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_tok->original_tok->line,
                                curr_tok->original_tok->column,
@@ -196,7 +208,7 @@ void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *
 
     // check if a variable with the same name exists in the current or ancestor scopes
     id_found = scope_stack_lookup(analyzer->scope_stack, node->data.variable_declaration.var->name);
-    if (id_found) { // if id exists
+    if (id_found) { // if value exists
         log_debug(SEMANTIC_ANALYZER, "Variable '%s' already defined", node->data.variable_declaration.var->name);
         analyzer->error_count += 1;
     } else {
@@ -216,7 +228,7 @@ void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *
                                     node->data.variable_declaration.var->value->type);
     } else {
         // check that the initial value that is has been assigned to the variable is of the same type
-        err_msg = validate_assignment(node->data.variable_declaration.var->value->type,
+        err_msg = validate_assignment(analyzer, node->data.variable_declaration.var->value->type,
                                       node->data.variable_declaration.value);
     }
     if (err_msg) {
@@ -249,7 +261,7 @@ void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node, AstN
         semantic_analyze_expression(analyzer, &node->data.assignment.expression->data.expression,
                                     target_var->value.var_symbol.type);
     } else {
-        err_msg = validate_assignment(target_var->value.var_symbol.type, node->data.assignment.expression);
+        err_msg = validate_assignment(analyzer, target_var->value.var_symbol.type, node->data.assignment.expression);
     }
     if (err_msg) {
         // assignment invalid
@@ -352,7 +364,8 @@ void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node
         analyzer->error_count += 1;
     }
     // if return types are different, and both of them are not int, double or char, which can be cast from each other
-    if (!compare_types(return_type, parent_return_type)) {
+//    if (!compare_types(return_type, parent_return_type)) {
+    if (validate_assignment(analyzer, parent_return_type, node->data.return_statement.value_expr) != NULL) {
         log_debug(SEMANTIC_ANALYZER, "Type mismatch: Returning %s from a function that supposed to return %s",
                   data_type_to_str(return_type), data_type_to_str(parent_return_type));
         analyzer->error_count += 1;

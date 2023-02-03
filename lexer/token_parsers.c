@@ -66,7 +66,7 @@ Token *lexer_parse_string_token(Lexer *lexer, char *curr_char) {
     lexer_forward(lexer);
     while (lexer->c != '"') {
         val = realloc(val, ++str_len);
-        val[str_len - 2] = lexer->c;
+        val[str_len - 2] = get_escape_character(lexer);
         lexer_forward(lexer);
     }
     val[str_len - 1] = 0; // terminate string with '\0'
@@ -82,7 +82,7 @@ Token *lexer_parse_char_token(Lexer *lexer, char *curr_char) {
         throw_memory_allocation_error(LEXER);
 
     lexer_forward(lexer);
-    val[0] = lexer->c;
+    val[0] = get_escape_character(lexer);
     lexer_forward(lexer);
     if (lexer->c != '\'') {
         new_exception_with_trace(LEXER, lexer, lexer->row, lexer->col - 2, 3,
@@ -134,4 +134,26 @@ Token *lexer_parse_exclamation_char(Lexer *lexer, char *curr_char) {
         lexer_forward(lexer);
         return init_token(curr_char, FACTORIAL_OP, lexer->row, token_start, 1);
     }
+}
+
+/*****/
+char get_escape_character(Lexer *lexer) {
+    if (lexer->c == '\\') {
+        lexer_forward(lexer);
+        switch (lexer->c) {
+            case 'n':
+                return '\n';
+            case 't':
+                return '\t';
+            case '\\':
+                return '\\';
+            case '"':
+                return '"';
+            case '\'':
+                return '\'';
+            default:
+                return lexer->c;
+        }
+    }
+    return lexer->c;
 }

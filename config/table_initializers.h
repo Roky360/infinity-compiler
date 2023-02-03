@@ -26,7 +26,7 @@ extern HashTable *char_to_token_type_map;
 
 void init_char_to_token_type_map();
 
-// maps an id represents a keyword to a TokenType associated with it
+// maps an value represents a keyword to a TokenType associated with it
 extern HashTable *id_to_keyword_map;
 
 void init_id_to_keyword_map();

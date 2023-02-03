@@ -29,7 +29,7 @@ unsigned int hash_func(HashTable *table, char *id) {
     return hash % table->capacity;
 }
 
-// returns the TableEntry value (void *) that corresponds to the given id. returns NULL if not found.
+// returns the TableEntry value (void *) that corresponds to the given value. returns NULL if not found.
 void *hash_table_lookup(HashTable *table, char *id) {
     TableEntry *e = table->entries[hash_func(table, id)];
     while (e) {
@@ -41,7 +41,7 @@ void *hash_table_lookup(HashTable *table, char *id) {
 }
 
 // returns if insertion was successful
-// if an entry with the same id exists, will return false (0)
+// if an entry with the same value exists, will return false (0)
 int hash_table_insert(HashTable *table, char *id, void *value) {
     TableEntry *new_entry, *e;
     unsigned int idx;

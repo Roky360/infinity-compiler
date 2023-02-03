@@ -23,7 +23,7 @@ void semantic_analyzer_dispose(SemanticAnalyzer *analyzer);
 
 int compare_types(DataType type_a, DataType type_b);
 
-char *validate_assignment(DataType type_dst, AstNode *value_node);
+char *validate_assignment(SemanticAnalyzer *analyzer, DataType type_dst, AstNode *value_node);
 
 int semantic_analyze_tree(SemanticAnalyzer *analyzer);
 

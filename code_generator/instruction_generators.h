@@ -6,7 +6,8 @@
 /** Identifier formatters */
 #define LABEL_FORMAT "L_%d"
 #define PROC_FORMAT "P_%s"
-#define VAR_FORMAT "V_%s"
+#define VAR_FORMAT "v_%s"
+#define STRING_FORMAT "s_%d"
 /** Reserve */
 #define RESB " resb %d\n"
 #define RESD " resd %d\n"

@@ -1,13 +1,19 @@
 start main;
 
-func main() -> int {
+func main() -> string {
     int x = 3;
     int p = 23;
     //x = 5*2^(x! / 1 - 2) - (-p);
 
     bismach(1 + 3 * 40 / 8);
 
-    return 0;
+    string s;
+    s = "hello\n\tworld";
+    s = "";
+    s = "";
+    s = "\t";
+
+    return "wow wassapp\n";
 }
 
 func bismach(int x) -> int {

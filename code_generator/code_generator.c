@@ -4,6 +4,7 @@
 #include "instruction_generators.h"
 #include "../config/table_initializers.h"
 #include "../expression_evaluator/expression_evaluator.h"
+#include "../symbol_table/string_repository/string_symbol.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -41,10 +42,29 @@ void code_generator_generate(CodeGenerator *generator) {
 }
 
 void generate_data_segment(CodeGenerator *generator) {
+    int i;
+    List *string_symbols = generator->symbol_table->str_repo->lst;
+    StringSymbol *curr_sym;
+
     write_to_file(generator->fp, SECTION, "data");
     write_to_file(generator->fp, "\tout_buf times 11 db 0\n");
     write_to_file(generator->fp, "\tout_buf_len equ $-out_buf\n");
     write_to_file(generator->fp, "\tnew_line_chr db 13\n");
+    write_to_file(generator->fp, "\n");
+
+    // define string literals
+    for (i = 0; i < string_symbols->size; i++) {
+        curr_sym = (StringSymbol *) string_symbols->items[i];
+        write_to_file(generator->fp, "\t%s db ", curr_sym->symbol_name);
+        for (int j = 0; j < curr_sym->length; j++) {
+            if (strchr("\n\t", curr_sym->value[j])) { // if escape character
+                write_to_file(generator->fp, "%d, ", curr_sym->value[j]);
+            } else {
+                write_to_file(generator->fp, "'%c', ", curr_sym->value[j]);
+            }
+        }
+        write_to_file(generator->fp, "0\n");
+    }
 
     write_to_file(generator->fp, "\n");
 }

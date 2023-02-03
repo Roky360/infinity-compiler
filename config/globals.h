@@ -7,7 +7,7 @@
 
 /** Debug Flags */
 #define INF_DEBUG
-#define INF_SHOW_COLORS
+//#define INF_SHOW_COLORS
 
 /** Defines */
 #define INPUT_EXTENSION "txt"
@@ -16,6 +16,7 @@
 
 #define DEFAULT_ROOT_FUNCTION_NAME "main"
 #define SYMBOL_TABLE_SIZE 199
+#define STRING_TABLE_SIZE 67
 #define SCOPE_SIZE 23
 
 /** Macros */
