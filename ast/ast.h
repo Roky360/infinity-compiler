@@ -98,6 +98,15 @@ typedef struct {
 } WhileLoop;
 
 /**
+\SwapStatement
+ Swaps the value of two variables of the same type
+*/
+typedef struct {
+    Token *var_a;
+    Token *var_b;
+} SwapStatement;
+
+/**
 \ReturnStatement
  Return value_expr from a function.
 */
@@ -117,6 +126,7 @@ typedef enum {
     AST_IF_STATEMENT,
     AST_LOOP,
     AST_WHILE_LOOP,
+    AST_SWAP_STATEMENT,
     AST_RETURN_STATEMENT,
     AST_NOOP, // no operation
 } AstType;
@@ -132,6 +142,7 @@ typedef union {
     IfStatement if_statement;
     Loop loop;
     WhileLoop while_loop;
+    SwapStatement swap_statement;
     ReturnStatement return_statement;
 } AstData;
 
@@ -163,6 +174,8 @@ AstNode *init_ast_if_statement(AstNode *node);
 AstNode *init_ast_loop(AstNode *node);
 
 AstNode *init_ast_while_loop(AstNode *node);
+
+AstNode *init_ast_swap_statement(AstNode *node);
 
 AstNode *init_ast_return_statement(AstNode *node);
 

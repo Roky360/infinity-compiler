@@ -102,10 +102,11 @@ AstNode *parser_parse_expression(Parser *parser, Expression *expression) {
             expr_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {.double_value = res});
         } else {
             expr_node->data.expression.contains_variables = 1;
-            expr_node->data.expression.tokens = expression->tokens;
+//            expr_node->data.expression.tokens = expression->tokens;
             expr_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
         }
     }
+    expr_node->data.expression.tokens = expression->tokens;
 
     return expr_node;
 }
@@ -138,12 +139,25 @@ void parser_get_tokens_until(Parser *parser, List *tokens, TokenType terminator)
 
 Token *parser_get_tokens_until_list(Parser *parser, List *tokens, TokenType *terminators, int term_len) {
     int done = 0, i;
+    Token *start_tok = parser->token;
+    char expected_tokens_buf[50] = {0}, *tok_buf;
     while (!done) {
         for (i = 0; i < term_len; i++) {
             if (parser->token->type == terminators[i]) {
                 done = 1;
                 break;
             }
+        }
+        // end of file has reached before end of statement
+        if (parser->token->type == EOF_TOKEN) {
+            for (i = 0; i < term_len; i++) { // prepare list of expected tokens
+                alsprintf(&tok_buf, "%s%s", token_type_to_str(terminators[i]), i == term_len - 1 ? "" : ", ");
+                strcat(expected_tokens_buf, tok_buf);
+                free(tok_buf);
+            }
+            new_exception_with_trace(PARSER, parser->lexer, start_tok->line, start_tok->column, start_tok->length,
+                                     "End of file has reached unexpectedly. Expected one of those tokens: %s.",
+                                     expected_tokens_buf);
         }
         if (!done)
             list_push(tokens, parser_forward(parser, parser->token->type));
@@ -284,7 +298,7 @@ AstNode *parser_parse_var_declaration(Parser *parser) {
 
 AstNode *parser_parse_function_definition(Parser *parser) {
     Variable *arg;
-    DataType argType;
+    DataType arg_type;
     Expression *return_expr; // for one-line functions
     AstNode *return_node, *node = init_ast(AST_FUNCTION_DEFINITION);
 
@@ -297,8 +311,8 @@ AstNode *parser_parse_function_definition(Parser *parser) {
     parser_forward(parser, L_PARENTHESES);
     while (parser->token->type != R_PARENTHESES) {
         // get arg type
-        argType = is_valid_data_type(parser->token->type);
-        if (!argType) // invalid type
+        arg_type = (DataType) parser->token->type;
+        if (!is_valid_data_type(parser->token->type)) // invalid type
         {
             parser_handle_unexpected_token(parser, "argument type");
         }
@@ -306,7 +320,7 @@ AstNode *parser_parse_function_definition(Parser *parser) {
         // get arg name
         arg = init_variable(
                 parser_forward(parser, ID)->value,
-                init_literal_value(argType, (Value) {})
+                init_literal_value(arg_type, (Value) {})
         );
         list_push(node->data.function_definition.args, arg);
 
@@ -448,44 +462,6 @@ AstNode *parser_parse_loop(Parser *parser) {
         }
     }
 
-/*    switch (parser->token->type) {
-        // simple loop
-        case INT:
-            node->data.loop.end = atoi(parser_forward(parser, INT)->value);
-            parser_forward(parser, TIMES_KEYWORD);
-            break;
-            // assign a loop counter
-        case ID:
-            // pick loop counter name
-            node->data.loop.loop_counter_name = parser_forward(parser, ID)->value;
-            parser_forward(parser, COLON);
-
-            start = atoi(parser_forward(parser, INT)->value);
-            prev = parser_forward_with_list(parser, (TokenType[]) {TO_KEYWORD, TIMES_KEYWORD}, 2,
-                                            "loop range. Try using `loop i: 3 times` to loop from 0 to 3, "
-                                            "or `loop i: 5 to 10 times` to loop from 5 to 9. "
-                                            "In both methods you have a named loop counter you can access inside the loop.");
-            if (prev->type == TIMES_KEYWORD) { // i: ▨ times
-                node->data.loop.end = start;
-            } else { // i: _ to ▨ times
-                node->data.loop.start = start;
-                node->data.loop.end = atoi(parser_forward(parser, INT)->value);
-                parser_forward(parser, TIMES_KEYWORD);
-            }
-            break;
-        default:
-            // TODO: maybe replace with shorter message
-            printf("%d\n", parser->token->length);
-            new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
-                                     parser->token->length,
-                                     "Illegal use of the loop statement.\n"
-                                     "Usage:\n"
-                                     "* `loop 3 times` to execute the loop body 3 times\n"
-                                     "* `loop i: 3 times` to also have access to a named loop counter inside the loop that runs from 0 to 2\n"
-                                     "* `loop i: 5 to 10 times` to set a custom range to the loop counter (here from 5 to 9)");
-            break;
-    }*/
-
     // parse loop body
     parser_parse_block(parser, node->data.loop.body);
 
@@ -506,7 +482,7 @@ AstNode *parser_parse_return_statement(Parser *parser) {
 
 AstNode *parser_parse_function_call(Parser *parser, Token *id_token) {
     Token *prev_tok;
-    AstNode *arg_node;
+    Expression *arg_expr;
     AstNode *node = init_ast(AST_FUNCTION_CALL);
     node->data.function_call.func_name = id_token->value;
 
@@ -515,15 +491,10 @@ AstNode *parser_parse_function_call(Parser *parser, Token *id_token) {
     if (prev_tok->type == R_PARENTHESES)
         parser_forward(parser, R_PARENTHESES);
     while (prev_tok->type != R_PARENTHESES) {
-        arg_node = init_ast(AST_EXPRESSION);
-        prev_tok = parser_get_tokens_until_list(parser, arg_node->data.expression.tokens,
+        arg_expr = init_expression_p();
+        prev_tok = parser_get_tokens_until_list(parser, arg_expr->tokens,
                                                 (TokenType[]) {COMMA, R_PARENTHESES}, 2);
-        // TODO: \/ support string arguments \/
-        arg_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
-        arg_node->data.expression.contains_variables =
-                !evaluate_expression(arg_node->data.expression.tokens,
-                                     &arg_node->data.expression.value->value.double_value);
-        list_push(node->data.function_call.args, arg_node);
+        list_push(node->data.function_call.args, parser_parse_expression(parser, arg_expr));
     }
     parser_forward(parser, SEMICOLON);
 
@@ -533,7 +504,6 @@ AstNode *parser_parse_function_call(Parser *parser, Token *id_token) {
 AstNode *parser_parse_while_loop(Parser *parser) {
     AstNode *node, *condition_node;
     List *condition;
-    char *warning;
     node = init_ast(AST_WHILE_LOOP);
     condition = init_list(sizeof(Token *));
 
@@ -563,5 +533,15 @@ AstNode *parser_parse_while_loop(Parser *parser) {
 
     parser_parse_block(parser, node->data.while_loop.body);
 
+    return node;
+}
+
+AstNode *parser_parse_swap_statement(Parser *parser) {
+    AstNode *node = init_ast(AST_SWAP_STATEMENT);
+    parser_forward(parser, SWAP_KEYWORD);
+    node->data.swap_statement.var_a = parser_forward(parser, ID);
+    parser_forward(parser, COMMA);
+    node->data.swap_statement.var_b = parser_forward(parser, ID);
+    parser_forward(parser, SEMICOLON);
     return node;
 }

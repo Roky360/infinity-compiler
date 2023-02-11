@@ -32,7 +32,7 @@ typedef union {
     FunctionSymbol func_symbol;
 } SymbolValue;
 
-typedef struct SymbolEntry {
+typedef struct Symbol {
     SymbolType type;
     SymbolValue value;
     AstNode *initializer; // A reference to the node where the symbol is initialized (used by the code generator)

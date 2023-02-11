@@ -61,6 +61,8 @@ void generate_op_modulus(CodeGenerator *generator, char *reg_a, char *reg_b, cha
     write_to_file(generator->fp, IDIV, reg_b);
     if (!is_last)
         write_to_file(generator->fp, PUSH, edx);
+    else
+        write_to_file(generator->fp, MOV, reg_a, edx);
     register_handler_free_register(generator->reg_handler, generator->fp, edx);
 }
 
@@ -93,7 +95,11 @@ void generate_op_logical_and(CodeGenerator *generator, char *reg_a, char *reg_b,
     write_to_file(generator->fp, LABEL_DEF, done_label);
     if (!is_last)
         write_to_file(generator->fp, PUSH, edx);
+    else
+        write_to_file(generator->fp, MOV, reg_a, edx);
     register_handler_free_register(generator->reg_handler, generator->fp, edx);
+    free(false_label);
+    free(done_label);
 }
 
 void generate_op_logical_or(CodeGenerator *generator, char *reg_a, char *reg_b, char *left_op_placeholder,

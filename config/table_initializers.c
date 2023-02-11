@@ -9,6 +9,7 @@
 #include "../expression_evaluator/operator_appliers.h"
 #include "../code_generator/code_generator.h"
 #include "../code_generator/operator_generators/operator_generators.h"
+#include "../code_generator/builtin_function_generators.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,6 +32,7 @@ void init_ast_type_to_analyzer_table() {
             AST_LOOP,
             AST_WHILE_LOOP,
             AST_RETURN_STATEMENT,
+            AST_SWAP_STATEMENT,
     };
     void (*values[])(SemanticAnalyzer *, AstNode *, AstNode *) = {
             semantic_analyze_start_statement,
@@ -42,8 +44,9 @@ void init_ast_type_to_analyzer_table() {
             semantic_analyze_loop_statement,
             semantic_analyze_while_loop,
             semantic_analyze_return_statement,
+            semantic_analyze_swap_statement,
     };
-    ast_type_to_analyzer_map = init_hash_table(19, NULL); // no need to free the functions...
+    ast_type_to_analyzer_map = init_hash_table(23, NULL); // no need to free the functions...
 
     for (i = 0; i < ARRLEN(keys); i++) {
         hash_table_insert(
@@ -71,6 +74,7 @@ void init_statement_to_parser_table() {
             LOOP_KEYWORD,
             WHILE_KEYWORD,
             RETURN_KEYWORD,
+            SWAP_KEYWORD,
     };
     AstNode *(*values[])(Parser *) = {
             parser_parse_start_expression,
@@ -84,6 +88,7 @@ void init_statement_to_parser_table() {
             parser_parse_loop,
             parser_parse_while_loop,
             parser_parse_return_statement,
+            parser_parse_swap_statement,
     };
     statement_to_parser_map = init_hash_table(23, NULL); // no need to free the functions...
 
@@ -240,6 +245,7 @@ void init_id_to_keyword_map() {
             VALUE_START_KEYWORD,
             VALUE_TRUE_KEYWORD,
             VALUE_FALSE_KEYWORD,
+            VALUE_SWAP_KEYWORD,
     };
     TokenType types[] = {
             VOID_KEYWORD,
@@ -261,8 +267,9 @@ void init_id_to_keyword_map() {
             START_KEYWORD,
             INT,
             INT,
+            SWAP_KEYWORD,
     };
-    id_to_keyword_map = init_hash_table(31, dispose_string);
+    id_to_keyword_map = init_hash_table(37, dispose_string);
 
     for (i = 0; i < ARRLEN(types); i++) {
         hash_table_insert(
@@ -400,6 +407,7 @@ void init_statement_to_generator_map() {
             AST_LOOP,
             AST_WHILE_LOOP,
             AST_RETURN_STATEMENT,
+            AST_SWAP_STATEMENT,
     };
     void (*generator_funcs[])(CodeGenerator *, AstNode *) = { // values
             generate_variable_declaration,
@@ -410,8 +418,9 @@ void init_statement_to_generator_map() {
             generate_loop,
             generate_while_loop,
             generate_return_statement,
+            generate_swap_statement,
     };
-    statement_to_generator_map = init_hash_table(19, NULL);
+    statement_to_generator_map = init_hash_table(23, NULL);
 
     for (i = 0; i < ARRLEN(ast_types); i++) {
         hash_table_insert(
@@ -469,6 +478,29 @@ void init_operator_to_generator_map() {
                 operator_to_generator_map,
                 strdup(ops[i]),
                 applier_func[i]
+        );
+    }
+}
+
+HashTable *builtin_function_to_generator_map;
+
+void init_builtin_function_to_generator_map() {
+    int i;
+    char *func_id[] = { // keys
+            PRINT_FUNC,
+            PRINTLN_FUNC,
+    };
+    void (*generator_func[])(CodeGenerator *, AstNode *) = {
+            generate_print,
+            generate_println,
+    };
+    builtin_function_to_generator_map = init_hash_table(11, NULL); // no need to free the functions...
+
+    for (i = 0; i < ARRLEN(generator_func); i++) {
+        hash_table_insert(
+                builtin_function_to_generator_map,
+                strdup(func_id[i]),
+                generator_func[i]
         );
     }
 }

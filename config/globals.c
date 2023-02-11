@@ -17,6 +17,7 @@ void init_globals() {
     // code generator
     init_statement_to_generator_map();
     init_operator_to_generator_map();
+    init_builtin_function_to_generator_map();
 }
 
 void clean_globals() {
@@ -33,4 +34,5 @@ void clean_globals() {
     // code generator
     hash_table_dispose(statement_to_generator_map);
     hash_table_dispose(operator_to_generator_map);
+    hash_table_dispose(builtin_function_to_generator_map);
 }

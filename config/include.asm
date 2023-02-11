@@ -81,6 +81,20 @@ PrintNewLine:
 	ret
 ; PrintNewLine
 
+PrintChar:
+    push ebp
+    mov ebp, esp
+    push eax
+    mov eax, [ebp+8]
+    mov byte [char_buf], al
+    push 1
+    push char_buf
+    call Print
+    pop eax
+    pop ebp
+    ret 4
+; PrintChar
+
 PrintInt:
     push ebp
     mov ebp, esp

@@ -3,7 +3,7 @@
 
 #include "../types/types.h"
 
-typedef struct {
+typedef struct Variable {
     char *name;
     LiteralValue *value; // type and value_expr of the variable
 } Variable;

@@ -6,13 +6,12 @@
 #include "io/io.h"
 
 /*
-// TODO: better logging system (add row and col to each token + colors)
-// TODO: in the new logging system, change that the logging method will accept va_list, instead if calling alsprintf before..
+ TODO: better logging system (add row and col to each token + colors)
+ TODO: in the new logging system, change that the logging method will accept va_list, instead if calling alsprintf before..
 
- TODO: function calls
- TODO: - define args as regular variables, and add analysis to them
+ TODO: print function - print char and bool correctly
 
- TODO: print function
+ TODO: main function should accept no arguments (until argv will be supported)
 */
 int main(int argc, char **argv) {
     char *output_path;

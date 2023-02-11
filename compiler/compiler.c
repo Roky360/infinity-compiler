@@ -19,7 +19,6 @@ void compiler_compile(char *src, char *output_path) {
     SemanticAnalyzer *analyzer;
     CodeGenerator *generator;
     int error_count;
-    char *msg;
     init_globals();
     lexer = init_lexer(src);
     parser = init_parser(lexer);
@@ -33,8 +32,6 @@ void compiler_compile(char *src, char *output_path) {
         log_raw_debug(COMPILER, RED_B, "Found %d error%s", error_count, error_count > 1 ? "s" : "");
         print_unicode(UNI_RED_B, error_count < 2 ? L" ~(>_<。)＼\n" : error_count < 5 ? L" ⊙﹏⊙∥\n" : L" X﹏X\n");
         exit(1);
-//        alsprintf(&msg, "Found %d error%s", error_count, error_count > 1 ? "s" : "");
-//        log_error(COMPILER, msg);
     }
     // generate code
     generator = init_code_generator(analyzer->table, root, analyzer->starting_point, output_path);

@@ -21,5 +21,6 @@
 #define VALUE_START_KEYWORD "start"
 #define VALUE_TRUE_KEYWORD "true"
 #define VALUE_FALSE_KEYWORD "false"
+#define VALUE_SWAP_KEYWORD "swap"
 
 #endif //INFINITY_COMPILER_CONSTANTS_H

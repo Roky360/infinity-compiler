@@ -41,7 +41,8 @@ int is_valid_data_type(int type) {
            || type == TYPE_INT
            || type == TYPE_CHAR
            || type == TYPE_STRING
-           || type == TYPE_DOUBLE;
+           || type == TYPE_DOUBLE
+           || type == TYPE_BOOL;
 }
 
 char *data_type_to_str(DataType type) {

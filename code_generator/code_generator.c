@@ -49,13 +49,17 @@ void generate_data_segment(CodeGenerator *generator) {
     write_to_file(generator->fp, SECTION, "data");
     write_to_file(generator->fp, "\tout_buf times 11 db 0\n");
     write_to_file(generator->fp, "\tout_buf_len equ $-out_buf\n");
+    write_to_file(generator->fp, "\tchar_buf db 0\n");
     write_to_file(generator->fp, "\tnew_line_chr db 13\n");
+    write_to_file(generator->fp, "\ttrue_str db \"true\"\n");
+    write_to_file(generator->fp, "\tfalse_str db \"false\"\n");
     write_to_file(generator->fp, "\n");
 
     // define string literals
     for (i = 0; i < string_symbols->size; i++) {
         curr_sym = (StringSymbol *) string_symbols->items[i];
         write_to_file(generator->fp, "\t%s db ", curr_sym->symbol_name);
+        write_to_file(generator->fp, "%d, ", curr_sym->length); // write string length
         for (int j = 0; j < curr_sym->length; j++) {
             if (strchr("\n\t", curr_sym->value[j])) { // if escape character
                 write_to_file(generator->fp, "%d, ", curr_sym->value[j]);
@@ -153,8 +157,6 @@ void code_generator_apply_assignment(CodeGenerator *generator, DataType var_type
             }
             break;
         case TYPE_STRING:
-//            write_to_file(generator->fp, MOV, ref_format, reg); // pass the address of the string
-//            break;
         case TYPE_INT:
             write_to_file(generator->fp, MOV, ref_format, reg);
             break;
@@ -167,13 +169,13 @@ void code_generator_apply_assignment(CodeGenerator *generator, DataType var_type
 
 // returns whether a return statement has met, for the use of the parent node, if it's a function
 int generate_block(CodeGenerator *generator, List *block) {
-    int i;
+    int i, returned = 0;
     for (i = 0; i < block->size; i++) {
         generate_statement(generator, (AstNode *) block->items[i]);
         if (((AstNode *) block->items[i])->type == AST_RETURN_STATEMENT)
-            return 1;
+            returned = 1;
     }
-    return 0;
+    return returned;
 }
 
 void generate_statement(CodeGenerator *generator, AstNode *node) {
@@ -265,7 +267,14 @@ void generate_arithmetic_expression(CodeGenerator *generator, Expression *expr) 
         generate_complicated_arithmetic_expression(generator, expr->tokens);
     } else {
         eax = register_handler_request_register(generator->reg_handler, generator->fp, EXPR_RES_REG);
-        write_to_file(generator->fp, MOV, eax, alsprintf(&expr_value_str, "%d", (int) expr->value->value.double_value));
+        if (expr->value->type == TYPE_STRING) {
+            write_to_file(generator->fp, MOV, eax, string_repository_lookup(generator->symbol_table->str_repo,
+                                                                            expr->value->value.string_value)->symbol_name);
+        } else {
+            write_to_file(generator->fp, MOV, eax,
+                          alsprintf(&expr_value_str, "%d", (int) expr->value->value.double_value));
+            free(expr_value_str);
+        }
         register_handler_free_register(generator->reg_handler, generator->fp, eax);
     }
 }
@@ -296,8 +305,10 @@ void generate_assignment(CodeGenerator *generator, AstNode *node) {
 }
 
 void generate_function(CodeGenerator *generator, AstNode *node) {
-    int returned;
-    char *proc_name = get_proc_name_formatted(node->data.function_definition.func_name);
+    int returned, i;
+    char *proc_name = get_proc_name_formatted(node->data.function_definition.func_name), *arg_buf;
+    char *eax;
+    Variable *curr_arg;
 
     // function name label
     write_to_file(generator->fp, GLOBAL, proc_name);
@@ -306,6 +317,26 @@ void generate_function(CodeGenerator *generator, AstNode *node) {
     if (node->data.function_definition.args->size > 0) {
         write_to_file(generator->fp, PUSH, EBP);
         write_to_file(generator->fp, MOV, EBP, ESP);
+        eax = register_handler_request_register(generator->reg_handler, generator->fp, EAX);
+        // initialize arguments
+        for (i = 0; i < node->data.function_definition.args->size; i++) {
+            curr_arg = (Variable *) node->data.function_definition.args->items[i];
+            write_to_file(generator->fp, MOV, eax, alsprintf(&arg_buf, "[ebp+%d]", 8 + 4 * i));
+            free(arg_buf);
+            if (symbol_table_lookup(generator->symbol_table, curr_arg->name)->value.var_symbol.var_size == BYTE) {
+                // byte
+                write_to_file(generator->fp, MOV,
+                              alsprintf(&arg_buf, "byte [%s]", get_var_name_formatted(curr_arg->name)),
+                              AL);
+            } else {
+                // dword
+                write_to_file(generator->fp, MOV,
+                              alsprintf(&arg_buf, "dword [%s]", get_var_name_formatted(curr_arg->name)),
+                              eax);
+            }
+        }
+        register_handler_free_register(generator->reg_handler, generator->fp, eax);
+        write_to_file(generator->fp, "\n");
     }
     // generate body
     returned = generate_block(generator, node->data.function_definition.body);
@@ -328,12 +359,20 @@ void generate_function(CodeGenerator *generator, AstNode *node) {
 
 void generate_function_call(CodeGenerator *generator, AstNode *node) {
     int i;
-    for (i = node->data.function_call.args->size - 1; i >= 0; i--) {
-        generate_arithmetic_expression(generator,
-                                       &((AstNode *) node->data.function_call.args->items[i])->data.expression);
-        write_to_file(generator->fp, PUSH, EXPR_RES_REG); // push each argument
+    void (*builtin_func)(CodeGenerator *, AstNode *);
+
+    builtin_func = hash_table_lookup(builtin_function_to_generator_map, node->data.function_call.func_name);
+    if (builtin_func) { // builtin function
+        builtin_func(generator, node);
+    } else { // other function
+        for (i = node->data.function_call.args->size - 1; i >= 0; i--) {
+            generate_arithmetic_expression(generator,
+                                           &((AstNode *) node->data.function_call.args->items[i])->data.expression);
+            write_to_file(generator->fp, PUSH, EXPR_RES_REG); // push each argument
+        }
+        write_to_file(generator->fp, CALL,
+                      get_proc_name_formatted(node->data.function_call.func_name)); // call function
     }
-    write_to_file(generator->fp, CALL, get_proc_name_formatted(node->data.function_call.func_name)); // call function
     write_to_file(generator->fp, "\n");
 }
 
@@ -485,4 +524,21 @@ void generate_return_statement(CodeGenerator *generator, AstNode *node) {
         write_to_file(generator->fp, POP, EBP);
         write_to_file(generator->fp, RET_NUM, arg_count * 4);
     }
+}
+
+void generate_swap_statement(CodeGenerator *generator, AstNode *node) {
+    Token *var_a = node->data.swap_statement.var_a, *var_b = node->data.swap_statement.var_b;
+    Symbol *sym_a, *sym_b;
+    char *reg, *var_a_format, *var_b_format;
+    sym_a = symbol_table_lookup(generator->symbol_table, var_a->value);
+    sym_b = symbol_table_lookup(generator->symbol_table, var_b->value);
+    reg = register_handler_request_register(generator->reg_handler, generator->fp,
+                                            sym_a->value.var_symbol.var_size == BYTE ? AL : EAX);
+    alsprintf(&var_a_format, "[%s]", get_var_name_formatted(sym_a->value.var_symbol.var_name));
+    alsprintf(&var_b_format, "[%s]", get_var_name_formatted(sym_b->value.var_symbol.var_name));
+
+    write_to_file(generator->fp, MOV, reg, var_a_format);
+    write_to_file(generator->fp, XCHG, reg, var_b_format);
+    write_to_file(generator->fp, MOV, var_a_format, reg);
+    register_handler_free_register(generator->reg_handler, generator->fp, reg);
 }

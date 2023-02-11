@@ -6,6 +6,10 @@
 #include "../scope_stack/scope_stack.h"
 #include "../lexer/lexer.h"
 
+/** Built-in Functions */
+#define PRINT_FUNC "print"
+#define PRINTLN_FUNC "println"
+
 typedef struct {
     SymbolTable *table;
     ScopeStack *scope_stack;
@@ -24,6 +28,8 @@ void semantic_analyzer_dispose(SemanticAnalyzer *analyzer);
 int compare_types(DataType type_a, DataType type_b);
 
 char *validate_assignment(SemanticAnalyzer *analyzer, DataType type_dst, AstNode *value_node);
+
+void semantic_add_builtin_functions_to_scope(SemanticAnalyzer *analyzer);
 
 int semantic_analyze_tree(SemanticAnalyzer *analyzer);
 
@@ -50,5 +56,7 @@ void semantic_analyze_while_loop(SemanticAnalyzer *analyzer, AstNode *node, AstN
 void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 
 void semantic_analyze_function_call(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
+
+void semantic_analyze_swap_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent);
 
 #endif //INFINITY_COMPILER_SEMANTIC_ANALYZER_H

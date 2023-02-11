@@ -22,6 +22,7 @@ typedef enum TokenType {
     ELSE_KEYWORD,
     TRUE_KEYWORD,
     FALSE_KEYWORD,
+    SWAP_KEYWORD,
     // loop-related
     LOOP_KEYWORD,
     TO_KEYWORD,

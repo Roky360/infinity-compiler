@@ -26,7 +26,7 @@ extern HashTable *char_to_token_type_map;
 
 void init_char_to_token_type_map();
 
-// maps an value represents a keyword to a TokenType associated with it
+// maps a value represents a keyword to a TokenType associated with it
 extern HashTable *id_to_keyword_map;
 
 void init_id_to_keyword_map();
@@ -48,5 +48,9 @@ void init_statement_to_generator_map();
 extern HashTable *operator_to_generator_map;
 
 void init_operator_to_generator_map();
+
+extern HashTable *builtin_function_to_generator_map;
+
+void init_builtin_function_to_generator_map();
 
 #endif //INFINITY_COMPILER_TABLE_INITIALIZERS_H

@@ -31,6 +31,8 @@ AstNode *init_ast(AstType type) {
             return init_ast_loop(ast);
         case AST_WHILE_LOOP:
             return init_ast_while_loop(ast);
+        case AST_SWAP_STATEMENT:
+            return init_ast_swap_statement(ast);
         case AST_RETURN_STATEMENT:
             return init_ast_return_statement(ast);
         case AST_NOOP:
@@ -115,6 +117,11 @@ AstNode *init_ast_while_loop(AstNode *node) {
     node->data = (AstData) {.while_loop = (WhileLoop) {
             .body = init_list(sizeof(AstNode *)),
     }};
+    return node;
+}
+
+AstNode *init_ast_swap_statement(AstNode *node) {
+    node->data = (AstData) {.swap_statement = (SwapStatement) {}};
     return node;
 }
 

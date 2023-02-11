@@ -10,7 +10,7 @@
 #define OP_MUL "*"
 #define OP_DIV "/"
 #define OP_POW "^"
-#define OP_MOD "%%"
+#define OP_MOD "%"
 #define OP_FACT "!"
 #define OP_LOGICAL_AND "and"
 #define OP_LOGICAL_OR "or"

@@ -15,7 +15,11 @@
 #define POWER_PROC "Power"
 #define FACT_PROC "Fact"
 #define PRINT_PROC "Print"
+#define PRINT_NEW_LINE_PROC "PrintNewLine"
 #define PRINT_INT_PROC "PrintInt"
+
+#define TRUE_STR_VAR "true_str"
+#define FALSE_STR_VAR "false_str"
 
 typedef struct CodeGenerator {
     SymbolTable *symbol_table;
@@ -73,5 +77,7 @@ void generate_loop(CodeGenerator *generator, AstNode *node);
 void generate_while_loop(CodeGenerator *generator, AstNode *node);
 
 void generate_return_statement(CodeGenerator *generator, AstNode *node);
+
+void generate_swap_statement(CodeGenerator *generator, AstNode *node);
 
 #endif //INFINITY_COMPILER_CODE_GENERATOR_H

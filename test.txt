@@ -1,26 +1,34 @@
-start main;
+start hi_there;
 
-func main() -> string {
-    int x = 3;
-    int p = 23;
-    //x = 5*2^(x! / 1 - 2) - (-p);
+func hi_there() -> int {
+    //bismach(1 + 3 * 40 / 8, "hi there :)");
 
-    bismach(1 + 3 * 40 / 8);
+    string s = "hello\n\tworld";
+    //print("hello\n\tworld");
+    s = "Eden";
 
-    string s;
-    s = "hello\n\tworld";
-    s = "";
-    s = "";
-    s = "\t";
+    //bismach(-123, true);
 
-    return "wow wassapp\n";
+    return 0;
 }
 
-func bismach(int x) -> int {
-    int x = 5 + 40 / 8;
-    int y = x - 7;
+func bismach(int num, bool f) -> bool {
+    println(num);
+    bool x = true;
+    bool y = false;
+    println("x = ", x, "\ty = ", y);
+    swap x, y;
+    println("x = ", x, "\ty = ", y);
+    return (x or y) and f;
+}
 
-    return y;
+func test() -> void {
+    loop i: 1 to 6 times {
+        loop i times {
+            print("*");
+        }
+        println();
+    }
 }
 
 // one-line functions :D

@@ -57,4 +57,6 @@ AstNode *parser_parse_function_call(Parser *parser, Token *id_token);
 
 AstNode *parser_parse_while_loop(Parser *parser);
 
+AstNode *parser_parse_swap_statement(Parser *parser);
+
 #endif //INFINITY_COMPILER_PARSER_H

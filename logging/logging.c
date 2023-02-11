@@ -61,7 +61,7 @@ void new_log_curr_line(const Lexer *lexer, unsigned int line, unsigned int col, 
     unsigned int line_no_len, i = 0;
     int start_line = *(int *) lexer->line_offsets->items[line];
 
-    line_no_len = printf(" %d", line);
+    line_no_len = printf(" %d", line + 1);
     printf(" |  ");
 
     while (lexer->src[start_line + i] != '\n' && lexer->src[i] != 0) {
@@ -104,6 +104,7 @@ void message_with_trace(Caller caller, const Lexer *lexer, unsigned int line, un
     va_list args;
     va_start(args, msg);
     __log_with_trace(caller, lexer, line, col, mark_length, msg, args);
+    puts("");
     va_end(args);
 }
 

@@ -27,3 +27,7 @@ void string_repository_add_string_identifier(StringRepository *str_repo, char *i
     if (hash_table_insert(str_repo->table, id, symbol))
         list_push(str_repo->lst, symbol);
 }
+
+StringSymbol *string_repository_lookup(StringRepository *str_repo, char *id) {
+    return (StringSymbol *) hash_table_lookup(str_repo->table, id);
+}
