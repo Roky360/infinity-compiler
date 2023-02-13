@@ -11,24 +11,44 @@ typedef enum Caller {
     CODE_GENERATOR,
 } Caller;
 
+typedef enum LogLevel {
+    DEBUG,
+    INFO,
+    WARNING,
+    ERROR,
+    SUCCESS,
+} LogLevel;
+
 char *caller_type_to_str(Caller caller);
 
-void log_curr_line(const Lexer *lexer);
+char *log_level_to_str(LogLevel level);
+
+char *get_log_level_color(LogLevel level);
+
+void new_log_curr_line(const Lexer *lexer, const char *color, unsigned int line, unsigned int col, int mark_length);
+
+void log_success(Caller caller, const char *format, ...);
 
 void log_debug(Caller caller, const char *format, ...);
 
-void log_error(Caller caller, const char *msg);
+void log_info(Caller caller, const char *format, ...);
 
-void log_warning(const Lexer *lexer, const char *msg);
+void log_warning(Caller caller, const char *format, ...);
 
-void new_log_curr_line(const Lexer *lexer, unsigned int line, unsigned int col, int mark_length);
+void log_error(Caller caller, const char *format, ...);
 
-void message_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length, char *msg, ...);
+void log_error_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
+                              const char *format, ...);
 
-void new_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length, char *msg, ...);
+void log_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
+                              const char *format, ...);
+
+void log_warning_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
+                            const char *format, ...);
 
 void throw_memory_allocation_error(Caller caller);
 
+/** Unicode */
 void log_raw_debug(Caller caller, const char *color, const char *format, ...);
 
 void set_unicode_mode();

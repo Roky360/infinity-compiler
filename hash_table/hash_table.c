@@ -22,9 +22,8 @@ HashTable *init_hash_table(unsigned capacity, void (*dispose_item)(void *item)) 
 unsigned int hash_func(HashTable *table, char *id) {
     size_t hash = FNV_offset_basis;
     while (*id) {
+        hash ^= *id++;
         hash *= FNV_prime;
-        hash ^= *id;
-        id++;
     }
     return hash % table->capacity;
 }

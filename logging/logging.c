@@ -24,53 +24,48 @@ char *caller_type_to_str(Caller caller) {
     }
 }
 
-void log_curr_line(const Lexer *lexer) {
-    unsigned int rowNoLen, i;
-
-    // print line number
-    rowNoLen = printf(" %d", lexer->row + 1);
-    printf(" |  ");
-    // print source code line
-    i = lexer->idx - lexer->col;
-    while (lexer->src[i] != '\n' && lexer->src[i] != 0)
-        printf("%c", lexer->src[i++]);
-    // print message
-    printf("\n%*s |  %*s^\n", rowNoLen, "", lexer->col, "");
+char *log_level_to_str(LogLevel level) {
+    switch (level) {
+        case DEBUG:
+            return "debug";
+        case INFO:
+        case SUCCESS:
+            return "info";
+        case WARNING:
+            return "warning";
+        case ERROR:
+            return "error";
+    }
 }
 
-void log_debug(Caller caller, const char *format, ...) {
-    va_list args;
-    char *msg_formatted;
-    va_start(args, format);
-    vprintf(alsprintf(&msg_formatted, "[%s] %s\n\n", caller_type_to_str(caller), format), args);
-    free(msg_formatted);
-    va_end(args);
+char *get_log_level_color(LogLevel level) {
+    switch (level) {
+        case DEBUG:
+            return WHITE_B;
+        case INFO:
+            return CYAN_B;
+        case WARNING:
+            return YELLOW_B;
+        case ERROR:
+            return RED_B;
+        case SUCCESS:
+            return GREEN_B;
+    }
 }
 
-void log_error(Caller caller, const char *msg) {
-    log_debug(caller, msg);
-    exit(1);
-}
-
-void log_warning(const Lexer *lexer, const char *msg) {
-    log_curr_line(lexer);
-    printf("[Warning] %s\n", msg);
-}
-
-void new_log_curr_line(const Lexer *lexer, unsigned int line, unsigned int col, int mark_length) {
-    unsigned int line_no_len, i = 0;
-    int start_line = *(int *) lexer->line_offsets->items[line];
+void new_log_curr_line(const Lexer *lexer, const char *color, unsigned int line, unsigned int col, int mark_length) {
+    unsigned int line_no_len, i = *(int *) lexer->line_offsets->items[line];
 
     line_no_len = printf(" %d", line + 1);
     printf(" |  ");
 
-    while (lexer->src[start_line + i] != '\n' && lexer->src[i] != 0) {
+    while (lexer->src[i] != '\n' && lexer->src[i] != 0) {
 #ifdef INF_SHOW_COLORS
         if (i == col)
             // color
-            printf(RED);
+            printf("%s", color);
 #endif
-        putchar(lexer->src[start_line + i++]);
+        putchar(lexer->src[i++]);
 #ifdef INF_SHOW_COLORS
         if (i - col == mark_length)
             // reset color
@@ -79,56 +74,121 @@ void new_log_curr_line(const Lexer *lexer, unsigned int line, unsigned int col, 
     }
     // print message
 #ifdef INF_SHOW_COLORS
-    printf("\n%*s |  %*s%s^%s\n", line_no_len, "", col, "", RED, RESET);
+    printf("\n%*s |  %*s%s^%s\n", line_no_len, "", col, "", color, RESET);
 #else
     printf("\n%*s |  %*s^\n", line_no_len, "", col, "");
 #endif
 }
 
-void __log_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
-                      char *msg, va_list argv) {
+void __log_msg(Caller caller, LogLevel level, const char *msg, va_list argv) {
     char *format;
     alsprintf(&format, "%s\n", msg); // add \n to the message
 
     // log message
+#ifdef INF_DEBUG
     printf("[%s] ", caller_type_to_str(caller));
+#endif
+#ifdef INF_SHOW_COLORS
+    printf("%s", get_log_level_color(level));
+#endif
+    printf("%s: ", log_level_to_str(level));
     vprintf(format, argv);
-    // log source code line
-    new_log_curr_line(lexer, line, col, mark_length);
+#ifdef INF_SHOW_COLORS
+    printf(RESET);
+#endif
 
     free(format);
 }
 
-void message_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
-                        char *msg, ...) {
-    va_list args;
-    va_start(args, msg);
-    __log_with_trace(caller, lexer, line, col, mark_length, msg, args);
+void __log_with_trace(Caller caller, const Lexer *lexer, LogLevel level, unsigned int line, unsigned int col,
+                      int mark_length, const char *msg, va_list argv) {
+    __log_msg(caller, level, msg, argv);
+    new_log_curr_line(lexer, get_log_level_color(level), line, col, mark_length);
     puts("");
+}
+
+void log_success(Caller caller, const char *format, ...) {
+#ifdef INF_DEBUG
+    va_list args;
+    va_start(args, format);
+    __log_msg(caller, SUCCESS, format, args);
+    va_end(args);
+#endif
+}
+
+void log_debug(Caller caller, const char *format, ...) {
+#ifdef INF_DEBUG
+    va_list args;
+    va_start(args, format);
+    __log_msg(caller, DEBUG, format, args);
+    va_end(args);
+#endif
+}
+
+void log_info(Caller caller, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    __log_msg(caller, INFO, format, args);
     va_end(args);
 }
 
-void new_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
-                              char *msg, ...) {
+void log_warning(Caller caller, const char *format, ...) {
     va_list args;
-    va_start(args, msg);
-    __log_with_trace(caller, lexer, line, col, mark_length, msg, args);
+    va_start(args, format);
+    __log_msg(caller, WARNING, format, args);
+    va_end(args);
+}
+
+void log_error(Caller caller, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    __log_msg(caller, ERROR, format, args);
     va_end(args);
     exit(1);
+}
+
+// logs error with trace *without exiting*
+void log_error_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
+                          const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    __log_with_trace(caller, lexer, ERROR, line, col, mark_length, format, args);
+    va_end(args);
+}
+
+// logs error with trace and exist with code 1
+void log_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
+                              const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    __log_with_trace(caller, lexer, ERROR, line, col, mark_length, format, args);
+    va_end(args);
+    exit(1);
+}
+
+void log_warning_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
+                            const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    __log_with_trace(caller, lexer, WARNING, line, col, mark_length, format, args);
+    va_end(args);
 }
 
 void throw_memory_allocation_error(Caller caller) {
     log_error(caller, "Can't allocate memory.");
 }
 
+/** Unicode */
 void log_raw_debug(Caller caller, const char *color, const char *format, ...) {
     va_list args;
     va_start(args, format);
+#ifdef INF_DEBUG
+    printf("[%s] ", caller_type_to_str(caller));
+#endif
 #ifdef INF_SHOW_COLORS
     if (color)
         printf("%s", color);
 #endif
-    printf("[%s] ", caller_type_to_str(caller));
     vprintf(format, args);
 #ifdef INF_SHOW_COLORS
     printf(RESET);

@@ -63,7 +63,7 @@ int is_right_associative(char *op) {
 }
 
 // returns if the expression can be parsed to a constant value (1), or it contains variables (0)
-int parse_tokens(List *expression, List *tokens) {
+int parse_tokens(List *expression, List *tokens, Lexer *lexer) {
     Token *token;
     ArithmeticToken *arithmeticToken;
     ArithmeticTokenType prev_token_type = -1;
@@ -92,8 +92,8 @@ int parse_tokens(List *expression, List *tokens) {
             } else {
                 arithmeticToken->value.number = strtod(token->value, &conversion_res);
                 if (*conversion_res != 0) {
-                    fprintf(stderr, "Error converting \"%s\" to float", conversion_res);
-                    exit(1);
+                    log_exception_with_trace(PARSER, lexer, token->line, token->column, token->length,
+                                             "Error converting \"%s\" to float.", conversion_res);
                 }
             }
             arithmeticToken->original_tok = token;
@@ -105,8 +105,8 @@ int parse_tokens(List *expression, List *tokens) {
                     list_push(tokens, init_arithmetic_token_with(OPERATOR, (ArithmeticTokenValue) {.op = "-"}, NULL));
                     arithmeticToken->value.number *= -1;
                 } else {
-                    fprintf(stderr, "Missing operator between operands");
-                    exit(1);
+                    log_exception_with_trace(PARSER, lexer, token->line, token->column, token->length,
+                                             "Missing operator between operands.");
                 }
             }
             list_push(tokens, arithmeticToken);
@@ -161,14 +161,14 @@ int parse_tokens(List *expression, List *tokens) {
             // update parentheses count
             paren_count += *token->value == '(' ? 1 : -1;
         } else {
-            fprintf(stderr, "Invalid token for an expression: %s\n", token->value);
-            exit(1);
+            log_exception_with_trace(PARSER, lexer, token->line, token->column, token->length,
+                                     "Invalid token for an expression: %s.", token->value);
         }
     }
     // check if all open brackets have a match
     if (paren_count != 0) {
-        fprintf(stderr, "Mismatch brackets.\n");
-        exit(1);
+        log_exception_with_trace(PARSER, lexer, token->line, token->column, token->length,
+                                 "Mismatch brackets.");
     }
     // check if a helper parentheses should be added
     if (should_close_paren)
@@ -177,41 +177,42 @@ int parse_tokens(List *expression, List *tokens) {
     return parsable;
 }
 
-void infix_to_postfix(List *infix, List *postfix) {
+void infix_to_postfix(List *infix, List *postfix, Lexer *lexer) {
     List *operator_stack;
-    ArithmeticToken *prev_token, *currToken;
+    ArithmeticToken *prev_token, *curr_token;
     operator_stack = init_list(sizeof(ArithmeticToken *));
 
     for (int i = 0; i < infix->size; i++) {
-        currToken = infix->items[i];
-        if (currToken->type == NUMBER || currToken->type == PLACEHOLDER || currToken->type == VAR) {
-            list_push(postfix, currToken);
-        } else if (currToken->type == OPERATOR) {
+        curr_token = infix->items[i];
+        if (curr_token->type == NUMBER || curr_token->type == PLACEHOLDER || curr_token->type == VAR) {
+            list_push(postfix, curr_token);
+        } else if (curr_token->type == OPERATOR) {
             while (!list_is_empty(operator_stack) &&
                    ((ArithmeticToken *) list_get_last(operator_stack))->type == OPERATOR &&
-                   (is_right_associative(currToken->value.op) ?
-                    get_precedence(currToken->value.op) <
+                   (is_right_associative(curr_token->value.op) ?
+                    get_precedence(curr_token->value.op) <
                     get_precedence(((ArithmeticToken *) list_get_last(operator_stack))->value.op)
-                                                              : get_precedence(currToken->value.op) <= get_precedence(
+                                                               : get_precedence(curr_token->value.op) <= get_precedence(
                                    ((ArithmeticToken *) list_get_last(operator_stack))->value.op))) {
                 list_push(postfix, list_pop(operator_stack));
             }
-            list_push(operator_stack, currToken);
-        } else if (currToken->type == PAREN) {
-            if (currToken->value.paren == '(') {
-                list_push(operator_stack, currToken);
+            list_push(operator_stack, curr_token);
+        } else if (curr_token->type == PAREN) {
+            if (curr_token->value.paren == '(') {
+                list_push(operator_stack, curr_token);
             } else {
                 while (((ArithmeticToken *) list_get_last(operator_stack))->type != PAREN) {
                     list_push(postfix, list_pop(operator_stack));
                 }
                 list_pop(operator_stack);
                 if (prev_token->type == PAREN && prev_token->value.paren == '(') {
-                    fprintf(stderr, "Expected an expression inside parentheses.\n");
-                    exit(1);
+                    log_exception_with_trace(PARSER, lexer, curr_token->original_tok->line,
+                                             curr_token->original_tok->column, curr_token->original_tok->length,
+                                             "Expected an expression inside parentheses.");
                 }
             }
         }
-        prev_token = currToken;
+        prev_token = curr_token;
     }
 
     while (!list_is_empty(operator_stack)) {
@@ -221,7 +222,7 @@ void infix_to_postfix(List *infix, List *postfix) {
     list_dispose(operator_stack);
 }
 
-double evaluate_postfix(List *postfix) {
+double evaluate_postfix(List *postfix, Lexer *lexer) {
     List *stack;
     ArithmeticToken *curr_token, *result_token, *left_token, *right_token;
     int i;
@@ -239,8 +240,9 @@ double evaluate_postfix(List *postfix) {
             right_token = list_pop(stack);
             left_token = list_pop(stack);
             if (!right_token || !left_token) {
-                fprintf(stderr, "Missing operands\n");
-                exit(1);
+                log_exception_with_trace(PARSER, lexer, curr_token->original_tok->line,
+                                         curr_token->original_tok->column, curr_token->original_tok->length,
+                                         "Missing operands.");
             }
             b = right_token->value.number;
             a = left_token->value.number;
@@ -250,8 +252,9 @@ double evaluate_postfix(List *postfix) {
                 result = applier_func(a, b, left_token->type == PLACEHOLDER ? left_token->value.op : "",
                                       right_token->type == PLACEHOLDER ? right_token->value.op : "");
             } else {
-                fprintf(stderr, "Invalid operator: %s\n", curr_token->value.op);
-                exit(1);
+                log_exception_with_trace(PARSER, lexer, curr_token->original_tok->line,
+                                         curr_token->original_tok->column, curr_token->original_tok->length,
+                                         "Invalid operator: %s.", curr_token->value.op);
             }
 
             result_token->type = NUMBER;
@@ -262,42 +265,38 @@ double evaluate_postfix(List *postfix) {
 
     result = ((ArithmeticToken *) list_pop(stack))->value.number;
     if (!list_is_empty(stack)) {
-        fprintf(stderr, "Invalid expression\n");
-        exit(1);
+        log_exception_with_trace(PARSER, lexer, curr_token->original_tok->line,
+                                 curr_token->original_tok->column, curr_token->original_tok->length,
+                                 "Invalid expression.");
     }
 
     list_dispose(stack);
     return result;
 }
 
-/* expression is a list of tokens
+/* expression is an address to a list of tokens
  * Returns if the expression can be evaluated, or it contains variables.
  * If it can be evaluated - the result is stored in `res` and returns true
  * If not - `expression` will contain the postfix expression and false is returned
  * */
-int evaluate_expression(List *expression, double *res) {
+int evaluate_expression(List **expression, double *res, Lexer *lexer) {
     List *infix, *postfix;
-    if (expression->size == 0)
+    if ((*expression)->size == 0)
         return 0;
     infix = init_list(sizeof(ArithmeticToken *));
     postfix = init_list(sizeof(ArithmeticToken *));
 
     // if the expression contains variables, convert to postfix and return false
-    if (!parse_tokens(expression, infix)) {
-        list_clear(expression, 0);
-        infix_to_postfix(infix, expression);
-//        list_print(infix, print_ar_token);
-//        list_print(expression, print_ar_token);
-//        exit(0);
+    if (!parse_tokens(*expression, infix, lexer)) {
+        list_clear(*expression, 0);
+        infix_to_postfix(infix, *expression, lexer);
         return 0;
     }
-    infix_to_postfix(infix, postfix);
-//    list_print(infix, print_ar_token);
-//    list_print(postfix, print_ar_token);
-    *res = evaluate_postfix(postfix);
-//    printf(" = %f\n", *res);
-
-    list_dispose(infix);
-    free(postfix);
+    infix_to_postfix(infix, postfix, lexer);
+    *res = evaluate_postfix(postfix, lexer);
+    *expression = postfix;
+//    list_dispose(infix);
+//    free(infix);
+//    free(postfix);
     return 1;
 }

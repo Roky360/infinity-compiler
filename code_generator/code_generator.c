@@ -4,7 +4,6 @@
 #include "instruction_generators.h"
 #include "../config/table_initializers.h"
 #include "../expression_evaluator/expression_evaluator.h"
-#include "../symbol_table/string_repository/string_symbol.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,10 +29,9 @@ void dispose_code_generator(CodeGenerator *generator) {
 
 void code_generator_generate(CodeGenerator *generator) {
     generator->fp = fopen(generator->target_path, "w");
-    if (!generator->fp) // add path to error msg
-        log_error(CODE_GENERATOR, "Could not create output file.");
+    if (!generator->fp)
+        log_error(CODE_GENERATOR, "Could not create output file at: %s", generator->target_path);
 
-    // generate...
     generate_data_segment(generator);
     generate_bss_segment(generator);
     generate_code_segment(generator);
@@ -45,8 +43,10 @@ void generate_data_segment(CodeGenerator *generator) {
     int i;
     List *string_symbols = generator->symbol_table->str_repo->lst;
     StringSymbol *curr_sym;
+    char zero_div_msg[] = "Program terminated because of zero division.";
 
     write_to_file(generator->fp, SECTION, "data");
+    write_to_file(generator->fp, "\tzero_div_msg db %d, \"%s\"\n", ARRLEN(zero_div_msg) - 1, zero_div_msg);
     write_to_file(generator->fp, "\tout_buf times 11 db 0\n");
     write_to_file(generator->fp, "\tout_buf_len equ $-out_buf\n");
     write_to_file(generator->fp, "\tchar_buf db 0\n");
@@ -99,7 +99,6 @@ void generate_bss_segment(CodeGenerator *generator) {
         write_to_file(generator->fp, alsprintf(&format, "\t%%s%s", var_type),
                       get_var_name_formatted(symbol->value.var_symbol.var_name), 1);
         free(format);
-        // TODO: maybe add len of each var
     }
     write_to_file(generator->fp, "\n");
 }

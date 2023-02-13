@@ -12,11 +12,14 @@
 /** Helper Procedures */
 #define INCLUDE_ASM_PATH "../config/include.asm"
 
+#define EXIT_PROC "Exit"
+#define EXIT_ZERO_DIV_PROC "ExitZeroDiv"
 #define POWER_PROC "Power"
 #define FACT_PROC "Fact"
 #define PRINT_PROC "Print"
 #define PRINT_NEW_LINE_PROC "PrintNewLine"
 #define PRINT_INT_PROC "PrintInt"
+#define PRINT_CHAR_PROC "PrintChar"
 
 #define TRUE_STR_VAR "true_str"
 #define FALSE_STR_VAR "false_str"

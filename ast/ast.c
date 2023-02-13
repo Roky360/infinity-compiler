@@ -5,9 +5,8 @@
 
 AstNode *init_ast(AstType type) {
     AstNode *ast = malloc(sizeof(AstNode));
-    if (!ast) {
-        log_error(COMPILER, "Can't allocate memory for AST.");
-    }
+    if (!ast)
+        throw_memory_allocation_error(COMPILER);
     ast->type = type;
 
     switch (ast->type) {

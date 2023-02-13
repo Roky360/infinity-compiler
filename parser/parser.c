@@ -4,13 +4,12 @@
 #include "../io/io.h"
 #include "../expression_evaluator/expression_evaluator.h"
 #include "../config/table_initializers.h"
-#include <stdio.h>
 #include <string.h>
 
 Parser *init_parser(Lexer *lexer) {
     Parser *parser = malloc(sizeof(Parser));
     if (!parser)
-        log_error(PARSER, "Cant allocate memory for parser.");
+        throw_memory_allocation_error(PARSER);
 
     parser->lexer = lexer;
     parser->token = lexer_next_token(lexer);
@@ -26,10 +25,10 @@ void parser_dispose(Parser *parser) {
 void parser_handle_unexpected_token(Parser *parser, char *expectations) {
 //    char *errMsg;
 //    alsprintf(&errMsg, "Unexpected token: '%s'. Expecting %s", parser->token->value, expectations);
-//    throw_exception_with_trace(PARSER, parser->lexer, errMsg);
-//    new_exception_with_trace(PARSER, parser->lexer, parser->lexer->row, col, tok_len,
+//    log_exception_with_trace(PARSER, parser->lexer, errMsg);
+//    log_exception_with_trace(PARSER, parser->lexer, parser->lexer->row, col, tok_len,
 //                             "Unexpected token: \"%s\". Expecting %s", parser->token->value, expectations);
-    new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+    log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
                              parser->token->length,
                              "Unexpected token \"%s\". Expecting %s", parser->token->value,
                              expectations);
@@ -41,15 +40,15 @@ that the current token is of the same type as the `type` parameter.
 Returns the current token. parser->token gets the next token.
 */
 Token *parser_forward(Parser *parser, TokenType type) {
-    Token *currTok;
+    Token *prev_tok;
 
     if (parser->token->type != type) {
         parser_handle_unexpected_token(parser, token_type_to_str(type));
     }
-    currTok = parser->token;
+    prev_tok = parser->token;
     parser->token = lexer_next_token(parser->lexer);
 
-    return currTok;
+    return prev_tok;
 }
 
 /**
@@ -63,7 +62,7 @@ Token *parser_forward_with_list(Parser *parser, TokenType *types, size_t types_l
         if (parser->token->type == types[i])
             return parser_forward(parser, types[i]);
     }
-    new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+    log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
                              parser->token->length,
                              "Unexpected token \"%s\". Expecting %s", parser->token->value,
                              expectations);
@@ -92,17 +91,16 @@ AstNode *parser_parse_expression(Parser *parser, Expression *expression) {
         );
         if (expression->tokens->size > 1) {
             Token *err_token = (Token *) expression->tokens->items[1];
-            new_exception_with_trace(PARSER, parser->lexer, err_token->line, err_token->column,
+            log_exception_with_trace(PARSER, parser->lexer, err_token->line, err_token->column,
                                      err_token->length,
                                      "Expected end of expression after string value");
         }
     } else {
         // parse expression
-        if (evaluate_expression(expression->tokens, &res)) {
+        if (evaluate_expression(&expression->tokens, &res, parser->lexer)) {
             expr_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {.double_value = res});
         } else {
             expr_node->data.expression.contains_variables = 1;
-//            expr_node->data.expression.tokens = expression->tokens;
             expr_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
         }
     }
@@ -112,8 +110,6 @@ AstNode *parser_parse_expression(Parser *parser, Expression *expression) {
 }
 
 LiteralValue *get_default_literal_value(TokenType type) {
-    char *errMsg;
-
     switch (type) {
         case INT_KEYWORD:
             return init_literal_value(TYPE_INT, (Value) {.integer_value = 0});
@@ -124,8 +120,7 @@ LiteralValue *get_default_literal_value(TokenType type) {
 //        case BOOL_KEYWORD:
 //            return init_literal_value(TYPE_BOOL, (Value) {.bool_value = 0});
         default:
-            alsprintf(&errMsg, "Unsupported type '%s'", token_type_to_str(type));
-            log_error(PARSER, errMsg);
+            log_error(PARSER, "Unsupported type '%s'", token_type_to_str(type));
             return NULL;
     }
 }
@@ -138,12 +133,12 @@ void parser_get_tokens_until(Parser *parser, List *tokens, TokenType terminator)
 }
 
 Token *parser_get_tokens_until_list(Parser *parser, List *tokens, TokenType *terminators, int term_len) {
-    int done = 0, i;
-    Token *start_tok = parser->token;
+    int done = 0, paren_count = 0, i;
+    Token *start_tok = parser->token, *curr_tok;
     char expected_tokens_buf[50] = {0}, *tok_buf;
     while (!done) {
         for (i = 0; i < term_len; i++) {
-            if (parser->token->type == terminators[i]) {
+            if (parser->token->type == terminators[i] && paren_count == 0) {
                 done = 1;
                 break;
             }
@@ -155,12 +150,18 @@ Token *parser_get_tokens_until_list(Parser *parser, List *tokens, TokenType *ter
                 strcat(expected_tokens_buf, tok_buf);
                 free(tok_buf);
             }
-            new_exception_with_trace(PARSER, parser->lexer, start_tok->line, start_tok->column, start_tok->length,
+            log_exception_with_trace(PARSER, parser->lexer, start_tok->line, start_tok->column, start_tok->length,
                                      "End of file has reached unexpectedly. Expected one of those tokens: %s.",
                                      expected_tokens_buf);
         }
-        if (!done)
-            list_push(tokens, parser_forward(parser, parser->token->type));
+        if (!done) {
+            curr_tok = parser_forward(parser, parser->token->type);
+            if (curr_tok->type == L_PARENTHESES)
+                paren_count++;
+            else if (curr_tok->type == R_PARENTHESES)
+                paren_count--;
+            list_push(tokens, curr_tok);
+        }
     }
     return parser_forward(parser, parser->token->type);
 }
@@ -197,8 +198,8 @@ void parser_parse_block(Parser *parser, List *block) {
     parser_forward(parser, L_CURLY_BRACE);
     while (parser->token->type != R_CURLY_BRACE) {
         if (parser->token->type == EOF_TOKEN) {
-            new_exception_with_trace(PARSER, parser->lexer, row, col, (int) tok_len,
-                                     "Expected '}' to close this block");
+            log_exception_with_trace(PARSER, parser->lexer, row, col, (int) tok_len,
+                                     "Expected '}' to close this block.");
         }
         list_push(block, parser_parse_statement(parser));
     }
@@ -215,15 +216,14 @@ AstNode *parser_parse_statement(Parser *parser) {
         // call the right parsing function
         return parser_func(parser);
     } else if (parser->token->type == SEMICOLON) {
-//        log_warning(parser->lexer, "Consider removing empty statements");
-        // TODO: replace with new warning log
-        new_log_curr_line(parser->lexer, parser->token->line, parser->token->column, parser->token->length);
-        log_debug(PARSER, "Consider removing empty statements");
+        log_warning_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+                               parser->token->length,
+                               "Consider removing empty statements");
         parser_forward(parser, SEMICOLON);
         return parser_parse_statement(parser);
     } else {
         // print error message
-        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+        log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
                                  parser->token->length,
                                  "Expected an expression, got %s", token_type_to_str(parser->token->type));
         return NULL;
@@ -238,7 +238,9 @@ AstNode *parser_parse_id(Parser *parser) {
         case L_PARENTHESES:
             return parser_parse_function_call(parser, id_token);
         case SEMICOLON:
-            log_warning(parser->lexer, "Expression has no affect. Consider removing this expression.");
+            log_warning_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+                                   parser->token->length,
+                                   "Expression has no affect. Consider removing this expression.");
             parser_forward(parser, SEMICOLON);
             return init_ast(AST_NOOP);
         default:
@@ -263,12 +265,12 @@ AstNode *parser_parse_var_declaration(Parser *parser) {
     node = init_ast(AST_VARIABLE_DECLARATION);
     var_type = parser_forward_with_list(parser, data_types, data_types_len, "type definition");
     if (var_type->type == DOUBLE) { // doubles not supported
-        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+        log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
                                  parser->token->length, "Variables of type double are not supported yet");
     }
     node->data.variable_declaration.var = init_variable(
             parser_forward(parser, ID)->value,
-            init_literal_value((DataType) var_type->type/*TODO:here*/, (Value) {})
+            init_literal_value((DataType) var_type->type, (Value) {})
     );
 
     // if value_expr is immediately assigned to variable
@@ -279,7 +281,7 @@ AstNode *parser_parse_var_declaration(Parser *parser) {
         parser_get_tokens_until(parser, expr->tokens, SEMICOLON);
         node->data.variable_declaration.value = parser_parse_expression(parser, expr);
         if (node->data.variable_declaration.value->data.expression.value->type == TYPE_VOID) {
-            new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+            log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
                                      parser->token->length, "Expected an expression");
         }
     } else {
@@ -335,7 +337,7 @@ AstNode *parser_parse_function_definition(Parser *parser) {
         node->data.function_definition.returnType =
                 (DataType) parser_forward_with_list(parser, data_types, data_types_len, "return type")->type;
         if (node->data.function_definition.returnType == TYPE_DOUBLE) {
-            new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
+            log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column,
                                      parser->token->length, "Doubles are not supported yet");
         }
     } else {
@@ -375,7 +377,6 @@ AstNode *parser_parse_assignment(Parser *parser, Token *id_token) {
 }
 
 AstNode *parser_parse_if_statement(Parser *parser) {
-    char *warning;
     AstNode *node, *condition_node;
     List *condition;
     node = init_ast(AST_IF_STATEMENT);
@@ -385,19 +386,23 @@ AstNode *parser_parse_if_statement(Parser *parser) {
     // parse boolean expression
     parser_get_parenthesized_expression(parser, condition);
     if (condition->size == 0) {
-        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+        log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
                                  "Expected an expression in if condition");
     }
     condition_node = node->data.if_statement.condition = init_ast(AST_EXPRESSION);
     node->data.if_statement.condition->data.expression.tokens = condition;
     // TODO: change the type to int   ->                                                   \/
     node->data.if_statement.condition->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
-    if (evaluate_expression(condition_node->data.expression.tokens,
-                            &condition_node->data.expression.value->value.double_value)) {
+    if (evaluate_expression(&condition_node->data.expression.tokens,
+                            &condition_node->data.expression.value->value.double_value, parser->lexer)) {
         // TODO: move this to the analyzer
-        alsprintf(&warning, "This if statement is always %s",
-                  node->data.if_statement.condition->data.expression.value->value.double_value ? "true" : "false");
-        log_warning(parser->lexer, warning);
+        Token *tok = ((ArithmeticToken *) condition_node->data.expression.tokens->items[0])->original_tok
+                     ? ((ArithmeticToken *) condition_node->data.expression.tokens->items[0])->original_tok
+                     : ((ArithmeticToken *) condition_node->data.expression.tokens->items[1])->original_tok;
+        log_warning_with_trace(PARSER, parser->lexer, tok->line, tok->column, tok->length,
+                               "This if statement is always %s",
+                               node->data.if_statement.condition->data.expression.value->value.double_value ? "true"
+                                                                                                            : "false");
     } else {
         condition_node->data.expression.contains_variables = 1;
         condition_node->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
@@ -419,7 +424,7 @@ AstNode *parser_parse_if_statement(Parser *parser) {
 
 AstNode *parser_parse_loop(Parser *parser) {
     Expression *start;
-    Token *prev;
+    Token *prev, *counter_tok;
     AstNode *node = init_ast(AST_LOOP);
     node->data.loop.start->tokens = init_list(sizeof(Token *));
     start = init_expression_p();
@@ -428,19 +433,23 @@ AstNode *parser_parse_loop(Parser *parser) {
     parser_forward(parser, LOOP_KEYWORD);
     prev = parser_get_tokens_until_list(parser, start->tokens, (TokenType[]) {COLON, TIMES_KEYWORD}, 2);
     if (list_is_empty(start->tokens))
-        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
-                                 "Expected an expression");
+        log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+                                 "Expected an expression.");
     if (prev->type == COLON) { // with counter
         // pick loop counter name
-        node->data.loop.loop_counter_name = ((Token *) start->tokens->items[0])->value;
-        node->data.loop.loop_counter_col = ((Token *) start->tokens->items[0])->column;
+        counter_tok = (Token *) start->tokens->items[0];
+        if (counter_tok->type != ID || start->tokens->size != 1)
+            log_exception_with_trace(PARSER, parser->lexer, counter_tok->line, counter_tok->column, counter_tok->length,
+                                     "Expected loop counter name.");
+        node->data.loop.loop_counter_name = counter_tok->value;
+        node->data.loop.loop_counter_col = counter_tok->column;
 
         list_clear(start->tokens, 1);
         prev = parser_get_tokens_until_list(parser, start->tokens, (TokenType[]) {TO_KEYWORD, TIMES_KEYWORD}, 2);
         if (list_is_empty(start->tokens))
-            new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
-                                     "Expected an expression");
-        if (!evaluate_expression(start->tokens, &start->value->value.double_value)) {
+            log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+                                     "Expected an expression.");
+        if (!evaluate_expression(&start->tokens, &start->value->value.double_value, parser->lexer)) {
             start->contains_variables = 1;
         }
         if (prev->type == TIMES_KEYWORD) { // i: ▨ times
@@ -449,15 +458,17 @@ AstNode *parser_parse_loop(Parser *parser) {
             node->data.loop.start = start;
             parser_get_tokens_until(parser, node->data.loop.end->tokens, TIMES_KEYWORD);
             if (list_is_empty(node->data.loop.end->tokens))
-                new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+                log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
                                          "Expected an expression");
-            if (!evaluate_expression(node->data.loop.end->tokens, &node->data.loop.end->value->value.double_value)) {
+            if (!evaluate_expression(&node->data.loop.end->tokens, &node->data.loop.end->value->value.double_value,
+                                     parser->lexer)) {
                 node->data.loop.end->contains_variables = 1;
             }
         }
     } else { // without counter: loop ▨ times
         node->data.loop.end = start;
-        if (!evaluate_expression(node->data.loop.end->tokens, &node->data.loop.end->value->value.double_value)) {
+        if (!evaluate_expression(&node->data.loop.end->tokens, &node->data.loop.end->value->value.double_value,
+                                 parser->lexer)) {
             node->data.loop.end->contains_variables = 1;
         }
     }
@@ -511,20 +522,25 @@ AstNode *parser_parse_while_loop(Parser *parser) {
     // parse boolean expression
     parser_get_parenthesized_expression(parser, condition);
     if (condition->size == 0) {
-        new_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
+        log_exception_with_trace(PARSER, parser->lexer, parser->token->line, parser->token->column, 0,
                                  "Expected an expression in while condition");
     }
     condition_node = node->data.while_loop.condition = init_ast(AST_EXPRESSION);
     node->data.while_loop.condition->data.expression.tokens = condition;
     // TODO: change the type to int   ->                                                   \/
     node->data.while_loop.condition->data.expression.value = init_literal_value(TYPE_DOUBLE, (Value) {});
-    if (evaluate_expression(condition_node->data.expression.tokens,
-                            &condition_node->data.expression.value->value.double_value)) {
+    if (evaluate_expression(&condition_node->data.expression.tokens,
+                            &condition_node->data.expression.value->value.double_value, parser->lexer)) {
         // TODO: move this to the analyzer
+        Token *tok = ((ArithmeticToken *) condition_node->data.expression.tokens->items[0])->original_tok
+                     ? ((ArithmeticToken *) condition_node->data.expression.tokens->items[0])->original_tok
+                     : ((ArithmeticToken *) condition_node->data.expression.tokens->items[1])->original_tok;
         if ((int) node->data.while_loop.condition->data.expression.value->value.double_value) {
-            log_warning(parser->lexer, "Infinite loop - condition in while loop is always true");
+            log_warning_with_trace(PARSER, parser->lexer, tok->line, tok->column, tok->length,
+                                   "Infinite loop - condition in while loop is always true");
         } else {
-            log_warning(parser->lexer, "While loop condition is always false");
+            log_warning_with_trace(PARSER, parser->lexer, tok->line, tok->column, tok->length,
+                                   "While loop condition is always false");
         }
     } else {
         condition_node->data.expression.contains_variables = 1;

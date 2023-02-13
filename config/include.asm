@@ -1,4 +1,21 @@
 ; ** Helper Procedures **
+Exit:
+    mov ebp, esp
+    mov ebx, [ebp+4]
+    mov eax, 1
+    int 0x80
+; Exit
+
+ExitZeroDiv:
+    movzx eax, byte [zero_div_msg]
+    push eax
+    push zero_div_msg+1
+    call Print
+    push 1
+    call Exit
+    ret
+; ExitZeroDiv
+
 Power:
     push ebp
     mov ebp, esp

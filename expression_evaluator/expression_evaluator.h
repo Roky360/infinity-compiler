@@ -3,6 +3,7 @@
 
 #include "../token/token.h"
 #include "../list/list.h"
+#include "../lexer/lexer.h"
 
 /* Operators definitions */
 #define OP_ADD "+"
@@ -60,12 +61,12 @@ int get_precedence(char *op);
 
 int is_right_associative(char *op);
 
-int parse_tokens(List *expression, List *tokens);
+int parse_tokens(List *expression, List *tokens, Lexer *lexer);
 
-void infix_to_postfix(List *infix, List *postfix);
+void infix_to_postfix(List *infix, List *postfix, Lexer *lexer);
 
-double evaluate_postfix(List *postfix);
+double evaluate_postfix(List *postfix, Lexer *lexer);
 
-int evaluate_expression(List *expression, double *res);
+int evaluate_expression(List **expression, double *res, Lexer *lexer);
 
 #endif //INFINITY_COMPILER_EXPRESSION_EVALUATOR_H

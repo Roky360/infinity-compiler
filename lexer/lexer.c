@@ -111,7 +111,7 @@ Token *lexer_parse_number_token(Lexer *lexer) {
 
     res = strtod(val, &conversion_res);
     if (*conversion_res != '\0') {
-        new_exception_with_trace(LEXER, lexer, lexer->row, lexer->col - val_len + 1, val_len, "Illegal number");
+        log_exception_with_trace(LEXER, lexer, lexer->row, lexer->col - val_len + 1, val_len, "Illegal number");
     }
 
     return (res == (int) res)
@@ -133,7 +133,7 @@ void lexer_skip_multi_line_comment(Lexer *lexer) {
     lexer_forward(lexer);
     while (!(lexer->c == '-' && lexer_peek(lexer, 1) == '/')) {
         if (lexer->c == 0) {
-            new_exception_with_trace(LEXER, lexer, row, col, 2, "Comment unclosed at end of file");
+            log_exception_with_trace(LEXER, lexer, row, col, 2, "Comment unclosed at end of file");
         }
         lexer_forward(lexer);
     }
@@ -161,7 +161,7 @@ Token *lexer_next_token(Lexer *lexer) {
         t = ((Token *(*)(Lexer *, char *)) lookup_res)(lexer, curr_char);
         return t;
     } else {
-        new_exception_with_trace(LEXER, lexer, lexer->row, lexer->col, 1, "Unknown token '%c'", lexer->c);
+        log_exception_with_trace(LEXER, lexer, lexer->row, lexer->col, 1, "Unknown token '%c'", lexer->c);
         return NULL;
     }
 }

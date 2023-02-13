@@ -38,6 +38,9 @@ func main(int argc, Array<string> argv) -> int {
 
     my_pow(1 + 2 * 40 / 5);
 
+    // swaps the value of two variables of the same type
+    swap x, y;
+
     // THINK HOW TO IMPLEMENT PRINT
     print(x);
     // THINK HOW TO IMPLEMENT INPUT

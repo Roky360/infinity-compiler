@@ -106,11 +106,15 @@ int semantic_analyze_tree(SemanticAnalyzer *analyzer) {
 
     // check that the starting point function exists
     starting_point_entry = symbol_table_lookup(analyzer->table, analyzer->root_func_name);
-    if (!starting_point_entry) {
-        log_debug(SEMANTIC_ANALYZER, "Starting point missing, \"%s\" is not defined", analyzer->root_func_name);
-        analyzer->error_count += 1;
-    } else {
+    if (starting_point_entry != NULL) {
         analyzer->starting_point = starting_point_entry->initializer;
+        if (starting_point_entry->value.func_symbol.arg_types->size != 0) {
+            log_error(SEMANTIC_ANALYZER, "Main function \"%s\" should accept no arguments.", analyzer->root_func_name);
+            analyzer->error_count += 1;
+        }
+    } else {
+        log_error(SEMANTIC_ANALYZER, "Starting point missing, \"%s\" is not defined.", analyzer->root_func_name);
+        analyzer->error_count += 1;
     }
     // pop the scope containing the builtin functions
     scope_stack_pop_scope(analyzer->scope_stack);
@@ -133,7 +137,7 @@ void semantic_analyze_block(SemanticAnalyzer *analyzer, List *block, AstNode *pa
         if (curr_node->type == AST_FUNCTION_DEFINITION) {
             id_found = scope_stack_lookup(analyzer->scope_stack, curr_node->data.function_definition.func_name);
             if (id_found) {
-                log_debug(SEMANTIC_ANALYZER, "Function '%s' already defined",
+                log_error(SEMANTIC_ANALYZER, "Function '%s' already defined",
                           curr_node->data.function_definition.func_name);
                 analyzer->error_count += 1;
             } else {
@@ -182,8 +186,7 @@ void semantic_analyze_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNo
     // alert for unreachable code
     if (parent->type == AST_FUNCTION_DEFINITION &&
         symbol_table_lookup(analyzer->table, parent->data.function_definition.func_name)->value.func_symbol.returned) {
-        // TODO: link this warning to the better logging system
-        log_debug(SEMANTIC_ANALYZER, "Unreachable code");
+        log_warning(SEMANTIC_ANALYZER, "Unreachable code");
     }
 
     analyzer_func = hash_table_lookup(ast_type_to_analyzer_map, alsprintf(&id_ptr, "%d", node->type));
@@ -204,7 +207,7 @@ void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, D
     Token *curr_tok;
     // if expression is void
     if (expr->value->type == TYPE_VOID) {
-        log_debug(SEMANTIC_ANALYZER, "Expected an expression (not void).");
+        log_error(SEMANTIC_ANALYZER, "Expected an expression (not void).");
         analyzer->error_count += 1;
     } else if (expr->value->type == TYPE_STRING) {
         curr_tok = expr->tokens->items[0];
@@ -214,11 +217,11 @@ void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, D
         expr->value->type = TYPE_STRING;
 
         if (target_type != -1 && target_type != TYPE_STRING) {
-            message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_tok->line,
-                               curr_tok->column,
-                               curr_tok->length,
-                               "String value cannot be assigned to %s variable",
-                               data_type_to_str(target_type));
+            log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_tok->line,
+                                 curr_tok->column,
+                                 curr_tok->length,
+                                 "String value cannot be assigned to %s variable",
+                                 data_type_to_str(target_type));
             analyzer->error_count += 1;
         }
     } else {
@@ -227,20 +230,20 @@ void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, D
             // check for a value that is not defined
             if (curr_arith_tok->type == ID &&
                 scope_stack_lookup(analyzer->scope_stack, curr_arith_tok->value.var) == NULL) {
-                message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_arith_tok->original_tok->line,
-                                   curr_arith_tok->original_tok->column,
-                                   curr_arith_tok->original_tok->length,
-                                   "Target variable '%s' is not defined in the current scope. Try declaring it before usage: <variable_type> %s;",
-                                   curr_arith_tok->value, curr_arith_tok->value);
+                log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_arith_tok->original_tok->line,
+                                     curr_arith_tok->original_tok->column,
+                                     curr_arith_tok->original_tok->length,
+                                     "Target variable '%s' is not defined in the current scope. Try declaring it before usage: <variable_type> %s;",
+                                     curr_arith_tok->value, curr_arith_tok->value);
                 analyzer->error_count += 1;
                 continue;
             }
             if (target_type == STRING) {
-                message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_arith_tok->original_tok->line,
-                                   curr_arith_tok->original_tok->column,
-                                   curr_arith_tok->original_tok->length,
-                                   "%s cannot be assigned to a string variable",
-                                   data_type_to_str(target_type), data_type_to_str(target_type));
+                log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_arith_tok->original_tok->line,
+                                     curr_arith_tok->original_tok->column,
+                                     curr_arith_tok->original_tok->length,
+                                     "%s cannot be assigned to a string variable",
+                                     data_type_to_str(target_type), data_type_to_str(target_type));
                 analyzer->error_count += 1;
             }
             if (curr_arith_tok->type == VAR &&
@@ -257,7 +260,7 @@ void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *
     // check if a variable with the same name exists in the current or ancestor scopes
     id_found = scope_stack_lookup(analyzer->scope_stack, node->data.variable_declaration.var->name);
     if (id_found) { // if value exists
-        log_debug(SEMANTIC_ANALYZER, "Variable '%s' already defined", node->data.variable_declaration.var->name);
+        log_error(SEMANTIC_ANALYZER, "Variable '%s' already defined", node->data.variable_declaration.var->name);
         analyzer->error_count += 1;
     } else {
         symbol_table_insert(analyzer->table,
@@ -281,7 +284,7 @@ void semantic_analyze_variable_declaration(SemanticAnalyzer *analyzer, AstNode *
     }
     if (err_msg) {
         // assignment invalid
-        log_debug(SEMANTIC_ANALYZER, err_msg);
+        log_error(SEMANTIC_ANALYZER, err_msg);
         analyzer->error_count += 1;
         free(err_msg);
     }
@@ -295,14 +298,14 @@ void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node, AstN
     id_found = scope_stack_lookup(analyzer->scope_stack, node->data.assignment.dst_variable->value);
     // if the target var is undefined
     if (!id_found) {
-        log_debug(SEMANTIC_ANALYZER,
+        log_error(SEMANTIC_ANALYZER,
                   "Target variable '%s' is not defined in the current scope. Try declaring it before usage: <variable_type> %s;",
                   node->data.assignment.dst_variable->value, node->data.assignment.dst_variable->value);
         analyzer->error_count += 1;
     }
     // if the target var is not a variable (it is not allowed to assign values to a function...)
     if (target_var->type != VARIABLE) {
-        log_debug(SEMANTIC_ANALYZER, "Assigning values to a function is not allowed, only to variables");
+        log_error(SEMANTIC_ANALYZER, "Assigning values to a function is not allowed, only to variables");
         analyzer->error_count += 1;
     }
 
@@ -314,7 +317,7 @@ void semantic_analyze_assignment(SemanticAnalyzer *analyzer, AstNode *node, AstN
     }
     if (err_msg) {
         // assignment invalid
-        log_debug(SEMANTIC_ANALYZER, err_msg);
+        log_error(SEMANTIC_ANALYZER, err_msg);
         analyzer->error_count += 1;
         free(err_msg);
     }
@@ -326,7 +329,8 @@ void semantic_analyze_function(SemanticAnalyzer *analyzer, AstNode *node, AstNod
     // check if return statement was met, and the function supposed to return something
     if (node->data.function_definition.returnType != TYPE_VOID &&
         !(symbol_table_lookup(analyzer->table, node->data.function_definition.func_name)->value.func_symbol.returned)) {
-        log_debug(SEMANTIC_ANALYZER, "Function %s does not return anything", node->data.function_definition.func_name);
+        log_error(SEMANTIC_ANALYZER, "Function %s does not return anything",
+                  node->data.function_definition.func_name);
         analyzer->error_count += 1;
     }
 }
@@ -338,7 +342,7 @@ void semantic_analyze_start_statement(SemanticAnalyzer *analyzer, AstNode *node,
 void semantic_analyze_if_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNode *parent) {
     DataType condition_type = node->data.if_statement.condition->data.expression.value->type;
     if (condition_type != TYPE_INT && condition_type != TYPE_DOUBLE) {
-        log_debug(SEMANTIC_ANALYZER, "Condition in if statement should have a boolean value, not %s",
+        log_error(SEMANTIC_ANALYZER, "Condition in if statement should have a boolean value, not %s",
                   data_type_to_str(condition_type));
         analyzer->error_count += 1;
     }
@@ -354,7 +358,7 @@ void semantic_analyze_loop_statement(SemanticAnalyzer *analyzer, AstNode *node, 
     end = node->data.loop.end;
     if (!start->contains_variables && !end->contains_variables) {
         if (start->value->value.double_value == 0 && (int) end->value->value.double_value <= 0) {
-            log_debug(SEMANTIC_ANALYZER, "Loop amount must be a natural number.");
+            log_error(SEMANTIC_ANALYZER, "Loop amount must be a natural number.");
             analyzer->error_count += 1;
         }
         // if loop goes backwards
@@ -371,9 +375,9 @@ void semantic_analyze_loop_statement(SemanticAnalyzer *analyzer, AstNode *node, 
         if (scope_stack_lookup(analyzer->scope_stack, node->data.loop.loop_counter_name) != NULL
             && symbol_table_lookup(analyzer->table, node->data.loop.loop_counter_name)->value.var_symbol.type !=
                TYPE_INT) {
-            message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, err_tok->line,
-                               node->data.loop.loop_counter_col, strlen(node->data.loop.loop_counter_name),
-                               "Only an integer variable can be used as a loop counter");
+            log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, err_tok->line,
+                                 node->data.loop.loop_counter_col, strlen(node->data.loop.loop_counter_name),
+                                 "Only an integer variable can be used as a loop counter");
             analyzer->error_count += 1;
         }
 
@@ -409,19 +413,20 @@ void semantic_analyze_return_statement(SemanticAnalyzer *analyzer, AstNode *node
     double double_return_val = node->data.return_statement.value_expr->data.expression.value->value.double_value;
     // void function does not supposed to return anything
     if (parent_return_type == TYPE_VOID && return_type != TYPE_VOID) {
-        log_debug(SEMANTIC_ANALYZER, "Function %s does not supposed to return anything",
+        log_error(SEMANTIC_ANALYZER, "Function %s does not supposed to return anything",
                   parent->data.function_definition.func_name);
         analyzer->error_count += 1;
     }
     // if return types are different, and both of them are not int, double or char, which can be cast from each other
 //    if (!compare_types(return_type, parent_return_type)) {
     if (validate_assignment(analyzer, parent_return_type, node->data.return_statement.value_expr) != NULL) {
-        log_debug(SEMANTIC_ANALYZER, "Type mismatch: Returning %s from a function that supposed to return %s",
-                  data_type_to_str(return_type), data_type_to_str(parent_return_type));
+        log_error(SEMANTIC_ANALYZER, "Returning %s from function '%s' that supposed to return %s.",
+                  data_type_to_str(return_type), parent->data.function_definition.func_name,
+                  data_type_to_str(parent_return_type));
         analyzer->error_count += 1;
     }
     if (parent_return_type == TYPE_BOOL && double_return_val != 0 && double_return_val != 1) {
-        log_debug(SEMANTIC_ANALYZER, "Value %.3f is not boolean, as expected to be returned from %s",
+        log_error(SEMANTIC_ANALYZER, "Value %.3f is not boolean, as expected to be returned from %s",
                   double_return_val, parent->data.function_definition.func_name);
         analyzer->error_count += 1;
     }
@@ -437,13 +442,13 @@ void semantic_analyze_function_call(SemanticAnalyzer *analyzer, AstNode *node, A
 
     // check if function exists
     if (target_func == NULL) {
-        log_debug(SEMANTIC_ANALYZER, "Function %s does not exist in the current context",
+        log_error(SEMANTIC_ANALYZER, "Function %s does not exist in the current context",
                   node->data.function_call.func_name);
         analyzer->error_count += 1;
         return; // cant analyze a function that does not exist
     }
     if (target_func->type != FUNCTION) {
-        log_debug(SEMANTIC_ANALYZER, "This identifier is not callable: %s",
+        log_error(SEMANTIC_ANALYZER, "This identifier is not callable: %s",
                   node->data.function_call.func_name);
         analyzer->error_count += 1;
     }
@@ -452,7 +457,7 @@ void semantic_analyze_function_call(SemanticAnalyzer *analyzer, AstNode *node, A
     // -1 is for builtin functions that takes unlimited amount of arguments
     if (target_func->value.func_symbol.arg_types->size != -1) {
         if (node->data.function_call.args->size != target_func->value.func_symbol.arg_types->size) {
-            log_debug(SEMANTIC_ANALYZER, "Expecting %d argument%s to pass to %s, got %d.",
+            log_error(SEMANTIC_ANALYZER, "Expecting %d argument%s to pass to %s, got %d.",
                       target_func->value.func_symbol.arg_types->size,
                       target_func->value.func_symbol.arg_types->size == 1 ? "" : "s",
                       target_func->value.func_symbol.func_name,
@@ -481,14 +486,14 @@ void semantic_analyze_swap_statement(SemanticAnalyzer *analyzer, AstNode *node, 
     Symbol *sym_a, *sym_b;
     // if the variables exist
     if (scope_stack_lookup(analyzer->scope_stack, var_a->value) == NULL) {
-        message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_a->line, var_a->column, var_a->length,
-                           "The name '%s' is not defined in the current scope.", var_a->value);
+        log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_a->line, var_a->column, var_a->length,
+                             "The name '%s' is not defined in the current scope.", var_a->value);
         analyzer->error_count += 1;
         return;
     }
     if (scope_stack_lookup(analyzer->scope_stack, var_b->value) == NULL) {
-        message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_b->line, var_b->column, var_b->length,
-                           "The name '%s' is not defined in the current scope.", var_b->value);
+        log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_b->line, var_b->column, var_b->length,
+                             "The name '%s' is not defined in the current scope.", var_b->value);
         analyzer->error_count += 1;
         return;
     }
@@ -496,24 +501,24 @@ void semantic_analyze_swap_statement(SemanticAnalyzer *analyzer, AstNode *node, 
     sym_b = symbol_table_lookup(analyzer->table, var_b->value);
     // if any of the operands is a function
     if (sym_a->type != VARIABLE) {
-        message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_a->line, var_a->column, var_a->length,
-                           "Can't swap functions, only variables.");
+        log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_a->line, var_a->column, var_a->length,
+                             "Can't swap functions, only variables.");
         analyzer->error_count += 1;
         return;
     }
     if (sym_b->type != VARIABLE) {
-        message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_b->line, var_b->column, var_b->length,
-                           "Can't swap functions, only variables.");
+        log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_b->line, var_b->column, var_b->length,
+                             "Can't swap functions, only variables.");
         analyzer->error_count += 1;
         return;
     }
     // type mismatch
     if (sym_a->value.var_symbol.type != sym_b->value.var_symbol.type) {
-        message_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_b->line, var_b->column,
-                           var_a->length + var_b->length + 2,
-                           "Can't swap variables that are not of the same type (%s and %s).",
-                           data_type_to_str(sym_a->value.var_symbol.type),
-                           data_type_to_str(sym_b->value.var_symbol.type));
+        log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, var_b->line, var_b->column,
+                             var_a->length + var_b->length + 2,
+                             "Can't swap variables that are not of the same type (%s and %s).",
+                             data_type_to_str(sym_a->value.var_symbol.type),
+                             data_type_to_str(sym_b->value.var_symbol.type));
         analyzer->error_count += 1;
     }
 }

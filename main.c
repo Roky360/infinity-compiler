@@ -6,12 +6,7 @@
 #include "io/io.h"
 
 /*
- TODO: better logging system (add row and col to each token + colors)
- TODO: in the new logging system, change that the logging method will accept va_list, instead if calling alsprintf before..
-
- TODO: print function - print char and bool correctly
-
- TODO: main function should accept no arguments (until argv will be supported)
+ TODO: separate table initializers to files, by module
 */
 int main(int argc, char **argv) {
     char *output_path;

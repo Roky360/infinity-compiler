@@ -52,12 +52,9 @@ void compiler_compile(char *src, char *output_path) {
 void compiler_compile_file(const char *input_path, char *output_path) {
     char *src;
 
-#ifdef INF_DEBUG
     clock_t start, end;
     double elapsed_time_ms;
-
     start = clock();
-#endif
 
     /** Compiler Action */
     src = read_file(input_path);
@@ -65,11 +62,10 @@ void compiler_compile_file(const char *input_path, char *output_path) {
     compiler_compile(src, output_path);
 
     free(src);
+    /* **************** */
 
-#ifdef INF_DEBUG
     // Print done message with time elapsed
     end = clock();
-    puts("");
     elapsed_time_ms = (double) (end - start) / CLOCKS_PER_SEC * 1000;
     if (elapsed_time_ms >= 100) {
         log_raw_debug(COMPILER, GREEN_B, "Compiled successfully in %.1f seconds", elapsed_time_ms / 1000);
@@ -77,5 +73,4 @@ void compiler_compile_file(const char *input_path, char *output_path) {
         log_raw_debug(COMPILER, GREEN_B, "Compiled successfully in %d ms", (int) elapsed_time_ms);
     }
     print_unicode(UNI_GREEN_B, L" ヽ(✿ﾟ▽ﾟ)ノ\n");
-#endif
 }

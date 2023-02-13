@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-// TODO: make ONE function for the initialization of the buffers... \/
 void generate_op_addition(CodeGenerator *generator, char *reg_a, char *reg_b, char *left_op_placeholder,
                           char *right_op_placeholder, int is_last) {
     write_to_file(generator->fp, POP, reg_b);
@@ -33,15 +32,20 @@ void generate_op_multiplication(CodeGenerator *generator, char *reg_a, char *reg
 
 void generate_op_division(CodeGenerator *generator, char *reg_a, char *reg_b, char *left_op_placeholder,
                           char *right_op_placeholder, int is_last) {
-    // TODO: check division by zero
     char *edx = register_handler_request_register(generator->reg_handler, generator->fp, EDX);
+    char *ok_label = generate_label();
     write_to_file(generator->fp, POP, reg_b);
     write_to_file(generator->fp, POP, reg_a);
+    write_to_file(generator->fp, CMP, reg_b, "0");
+    write_to_file(generator->fp, JNE, ok_label);
+    write_to_file(generator->fp, CALL, EXIT_ZERO_DIV_PROC); // exit on zero division
+    write_to_file(generator->fp, LABEL_DEF, ok_label);
     write_to_file(generator->fp, XOR, edx, edx);
     write_to_file(generator->fp, IDIV, reg_b);
     if (!is_last)
         write_to_file(generator->fp, PUSH, reg_a);
     register_handler_free_register(generator->reg_handler, generator->fp, edx);
+    free(ok_label);
 }
 
 void generate_op_power(CodeGenerator *generator, char *reg_a, char *reg_b, char *left_op_placeholder,
