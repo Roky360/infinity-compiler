@@ -91,3 +91,17 @@ void generate_println(CodeGenerator *generator, AstNode *node) {
     generate_print(generator, node);
     write_to_file(generator->fp, CALL, PRINT_NEW_LINE_PROC);
 }
+
+void generate_exit(CodeGenerator *generator, AstNode *node) {
+    char *buf;
+    Expression *arg_expr = &((AstNode *) node->data.function_call.args->items[0])->data.expression;
+    if (arg_expr->contains_variables) {
+        generate_arithmetic_expression(generator, arg_expr);
+        write_to_file(generator->fp, PUSH, EXPR_RES_REG);
+    } else {
+        write_to_file(generator->fp, PUSH, alsprintf(&buf, "%d",
+                                                     (int) (arg_expr->value->value.double_value)));
+        free(buf);
+    }
+    write_to_file(generator->fp, CALL, EXIT_PROC);
+}

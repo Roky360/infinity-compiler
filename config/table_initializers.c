@@ -46,7 +46,7 @@ void init_ast_type_to_analyzer_table() {
             semantic_analyze_return_statement,
             semantic_analyze_swap_statement,
     };
-    ast_type_to_analyzer_map = init_hash_table(23, NULL); // no need to free the functions...
+    ast_type_to_analyzer_map = init_hash_table(ARRLEN(keys), NULL); // no need to free the functions...
 
     for (i = 0; i < ARRLEN(keys); i++) {
         hash_table_insert(
@@ -90,7 +90,7 @@ void init_statement_to_parser_table() {
             parser_parse_return_statement,
             parser_parse_swap_statement,
     };
-    statement_to_parser_map = init_hash_table(23, NULL); // no need to free the functions...
+    statement_to_parser_map = init_hash_table(ARRLEN(keys), NULL); // no need to free the functions...
 
     for (i = 0; i < ARRLEN(keys); i++) {
         hash_table_insert(
@@ -128,7 +128,7 @@ void init_char_to_lexing_function_map() {
             lexer_parse_plus_char,
             lexer_parse_exclamation_char,
     };
-    char_to_to_lexing_function_map = init_hash_table(97, NULL); // no need to free the functions...
+    char_to_to_lexing_function_map = init_hash_table(/*97*/ ARRLEN(keys) * 2 + 10 + 1 + 26 * 2 + 1, NULL); // no need to free the functions...
 
     for (i = 0; i < ARRLEN(keys); i++) {
         hash_table_insert(
@@ -209,7 +209,7 @@ void init_char_to_token_type_map() {
             POWER_OP,
             EOF_TOKEN,
     };
-    char_to_token_type_map = init_hash_table(23, dispose_string); // no need to free a function
+    char_to_token_type_map = init_hash_table(ARRLEN(types) * 2, dispose_string); // no need to free a function
     // initialize all fields with the init_token function
     for (i = 0; i < ARRLEN(types); i++) {
         hash_table_insert(
@@ -269,7 +269,7 @@ void init_id_to_keyword_map() {
             INT,
             SWAP_KEYWORD,
     };
-    id_to_keyword_map = init_hash_table(37, dispose_string);
+    id_to_keyword_map = init_hash_table(ARRLEN(types) * 2, dispose_string);
 
     for (i = 0; i < ARRLEN(types); i++) {
         hash_table_insert(
@@ -321,7 +321,7 @@ void init_operator_to_applier_function_map() {
             apply_lower_than,
             apply_lower_equal,
     };
-    operator_to_applier_function_map = init_hash_table(31, NULL); // no need to free the functions...
+    operator_to_applier_function_map = init_hash_table(ARRLEN(applier_func) * 2, NULL); // no need to free the functions...
 
     for (i = 0; i < ARRLEN(applier_func); i++) {
         hash_table_insert(
@@ -381,7 +381,7 @@ void init_precedence_map() {
             "2",
             "1",
     };
-    precedence_map = init_hash_table(31, dispose_string);
+    precedence_map = init_hash_table(ARRLEN(ops) * 2, dispose_string);
 
     for (i = 0; i < ARRLEN(ops); i++) {
         hash_table_insert(
@@ -420,7 +420,7 @@ void init_statement_to_generator_map() {
             generate_return_statement,
             generate_swap_statement,
     };
-    statement_to_generator_map = init_hash_table(23, NULL);
+    statement_to_generator_map = init_hash_table(ARRLEN(ast_types) * 2, NULL);
 
     for (i = 0; i < ARRLEN(ast_types); i++) {
         hash_table_insert(
@@ -471,7 +471,7 @@ void init_operator_to_generator_map() {
             generate_op_lower_than,
             generate_op_lower_equal,
     };
-    operator_to_generator_map = init_hash_table(31, NULL); // no need to free the functions...
+    operator_to_generator_map = init_hash_table(ARRLEN(applier_func) * 2, NULL); // no need to free the functions...
 
     for (i = 0; i < ARRLEN(applier_func); i++) {
         hash_table_insert(
@@ -489,12 +489,14 @@ void init_builtin_function_to_generator_map() {
     char *func_id[] = { // keys
             PRINT_FUNC,
             PRINTLN_FUNC,
+            EXIT_FUNC,
     };
     void (*generator_func[])(CodeGenerator *, AstNode *) = {
             generate_print,
             generate_println,
+            generate_exit,
     };
-    builtin_function_to_generator_map = init_hash_table(11, NULL); // no need to free the functions...
+    builtin_function_to_generator_map = init_hash_table(ARRLEN(generator_func) * 2, NULL); // no need to free the functions...
 
     for (i = 0; i < ARRLEN(generator_func); i++) {
         hash_table_insert(

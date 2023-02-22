@@ -1,8 +1,6 @@
 #ifndef INFINITY_COMPILER_LIST_H
 #define INFINITY_COMPILER_LIST_H
 
-#include <stdio.h>
-
 typedef struct List {
     void **items;
     unsigned int size;
@@ -18,8 +16,6 @@ int list_is_empty(List *list);
 void *list_get_last(List *list);
 
 void *list_get_item(List *list, int index);
-
-void *list_get_address_by_index(List *list, int index);
 
 void list_push(List *list, void *item);
 

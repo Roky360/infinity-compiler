@@ -115,7 +115,7 @@ typedef struct {
     unsigned int parent_function_arg_count; // to be used by the code generator in the `ret` instruction
 } ReturnStatement;
 
-typedef enum {
+typedef enum AstType {
     AST_COMPOUND,             // used as the root node of a file
     AST_START_EXPRESSION,
     AST_EXPRESSION,           // an expression (5+2 or 2*x)
@@ -131,7 +131,7 @@ typedef enum {
     AST_NOOP, // no operation
 } AstType;
 
-typedef union {
+typedef union AstData {
     Compound compound;
     StartExpression start_expr;
     Expression expression;

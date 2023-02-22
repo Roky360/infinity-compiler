@@ -37,8 +37,6 @@ char *read_file(const char *filename) {
     FILE *fp;
     char *content;
     unsigned long flen;
-    // unsigned long bytes_read = 0;
-    // unsigned short reading_amount;
     char chunk[CHUNK_SIZE];
     chunk[CHUNK_SIZE - 1] = '\0';
 
@@ -70,55 +68,47 @@ char *read_file(const char *filename) {
     return content;
 }
 
-char *get_file_extension(char *filename) {
-    char *p = filename + strlen(filename) - 1;
-    while (*--p != '.')
-        if (p == filename) // if file name does not contain extension
-            return "";
-    return p + 1;
+char *get_file_extension(const char *filename) {
+    char *p = strrchr(filename, '.');
+    return p ? p + 1 : "";
 }
 
-char *get_file_name(char *path) {
-    char *p = path + strlen(path) - 1;
+const char *get_file_name(const char *path) {
+    const char *p = path + strlen(path) - 1;
     while (*--p != '/' && *p != '\\')
         if (p == path) // if file name does not contain extension
             return path;
     return p + 1;
 }
 
-char *alsprintf(char **stream, char *format, ...) {
-//    int res;
+char *alsprintf(char **stream, const char *format, ...) {
     va_list args;
     va_start(args, format);
 
     *stream = malloc(vsnprintf(NULL, 0, format, args) + 1);
-    /*res =*/ vsprintf(*stream, format, args);
+    vsprintf(*stream, format, args);
 
     va_end(args);
     return *stream;
 }
 
-char *change_file_extension(char *filename, char *new_ext) {
+char *change_file_extension(char *filename, const char *new_ext) {
     char *p, *ext_p;
-    int filename_new_len, new_ext_len, i;
+    size_t filename_new_len, new_ext_len;
     ext_p = get_file_extension(filename);
     new_ext_len = strlen(new_ext);
     filename_new_len = strlen(filename) - strlen(ext_p) + new_ext_len;
 
     filename = realloc(filename, filename_new_len + 1);
     p = filename + filename_new_len - new_ext_len;
-    for (i = 0; i < new_ext_len; i++, p++, new_ext++) {
-        *p = *new_ext;
-    }
+    strcpy(p, new_ext);
 
     return filename;
 }
 
-void write_to_file(FILE *fp, char *format, ...) {
+void write_to_file(FILE *fp, const char *format, ...) {
     va_list args;
     va_start(args, format);
-
     vfprintf(fp, format, args);
-
     va_end(args);
 }

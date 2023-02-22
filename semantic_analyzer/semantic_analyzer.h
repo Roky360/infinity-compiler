@@ -9,6 +9,7 @@
 /** Built-in Functions */
 #define PRINT_FUNC "print"
 #define PRINTLN_FUNC "println"
+#define EXIT_FUNC "exit"
 
 typedef struct {
     SymbolTable *table;

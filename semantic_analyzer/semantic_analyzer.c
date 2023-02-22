@@ -74,17 +74,23 @@ char *validate_assignment(SemanticAnalyzer *analyzer, DataType type_dst, AstNode
 }
 
 void semantic_add_builtin_functions_to_scope(SemanticAnalyzer *analyzer) {
-    List *args = init_list(sizeof(Variable *));
-    args->size = -1;
+    List *unlimited_args = init_list(sizeof(Variable *)), *exit_func_args = init_list(sizeof(Variable *));
+    unlimited_args->size = -1;
+    list_push(exit_func_args, init_variable("", init_literal_value(TYPE_INT, (Value) {})));
     scope_stack_push_scope(analyzer->scope_stack);
     symbol_table_insert(analyzer->table, FUNCTION, strdup(PRINT_FUNC), (SymbolValue) {.func_symbol = (FunctionSymbol) {
             .func_name = PRINT_FUNC,
-            .arg_types = args,
+            .arg_types = unlimited_args,
     }}, NULL);
     symbol_table_insert(analyzer->table, FUNCTION, strdup(PRINTLN_FUNC),
                         (SymbolValue) {.func_symbol = (FunctionSymbol) {
                                 .func_name = PRINTLN_FUNC,
-                                .arg_types = args,
+                                .arg_types = unlimited_args,
+                        }}, NULL);
+    symbol_table_insert(analyzer->table, FUNCTION, strdup(EXIT_FUNC),
+                        (SymbolValue) {.func_symbol = (FunctionSymbol) {
+                                .func_name = EXIT_FUNC,
+                                .arg_types = exit_func_args,
                         }}, NULL);
 }
 
@@ -107,10 +113,16 @@ int semantic_analyze_tree(SemanticAnalyzer *analyzer) {
     // check that the starting point function exists
     starting_point_entry = symbol_table_lookup(analyzer->table, analyzer->root_func_name);
     if (starting_point_entry != NULL) {
-        analyzer->starting_point = starting_point_entry->initializer;
-        if (starting_point_entry->value.func_symbol.arg_types->size != 0) {
-            log_error(SEMANTIC_ANALYZER, "Main function \"%s\" should accept no arguments.", analyzer->root_func_name);
+        if (starting_point_entry->type != FUNCTION) { // if the starting point is not a function
+            log_error(SEMANTIC_ANALYZER, "Entry point should be a function (%s isn't a function).", analyzer->root_func_name);
             analyzer->error_count += 1;
+        } else {
+            analyzer->starting_point = starting_point_entry->initializer;
+            if (starting_point_entry->value.func_symbol.arg_types->size != 0) {
+                log_error(SEMANTIC_ANALYZER, "Main function \"%s\" should accept no arguments.",
+                          analyzer->root_func_name);
+                analyzer->error_count += 1;
+            }
         }
     } else {
         log_error(SEMANTIC_ANALYZER, "Starting point missing, \"%s\" is not defined.", analyzer->root_func_name);

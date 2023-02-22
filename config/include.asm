@@ -124,7 +124,7 @@ PrintInt:
     cmp eax, 0
     je print_num
     inc esi
-    cmp ax, 0
+    cmp eax, 0
     jge conv_loop
     neg eax
     mov edi, 1
