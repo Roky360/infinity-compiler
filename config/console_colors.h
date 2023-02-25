@@ -1,6 +1,9 @@
 #ifndef INFINITY_COMPILER_CONSOLE_COLORS_H
 #define INFINITY_COMPILER_CONSOLE_COLORS_H
 
+#define BOLD "\e[1m"
+#define UNDERLINE "\e[4m"
+
 //Regular text
 #define BLACK "\e[0;30m"
 #define RED "\e[0;31m"
@@ -41,7 +44,7 @@
 #define CYAN_BG "\e[46m"
 #define WHITE_BG "\e[47m"
 
-//High intensty background 
+//High intensity background
 #define BLACK_HBG "\e[0;100m"
 #define RED_HBG "\e[0;101m"
 #define GREEN_HBG "\e[0;102m"
@@ -51,7 +54,7 @@
 #define CYAN_HBG "\e[0;106m"
 #define WHITE_HBG "\e[0;107m"
 
-//High intensty text
+//High intensity text
 #define BLACK_H "\e[0;90m"
 #define RED_H "\e[0;91m"
 #define GREEN_H "\e[0;92m"

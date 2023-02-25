@@ -12,9 +12,9 @@ func hi_there() -> int {
 func bismach() {
     int x = 1;
     int y = 2;
-    println("x = ", x, "\ty = ", y);
+    println("x = ", x, '\t', "y = ", y);
     swap x, y;
-    println("x = ", x, "\ty = ", y);
+    println("x = ", x, '\t', "y = ", y);
 }
 
 func test() -> void {

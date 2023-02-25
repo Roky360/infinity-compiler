@@ -1,4 +1,6 @@
 #include "io.h"
+#include "../logging/logging.h"
+#include "../config/console_colors.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
@@ -16,13 +18,12 @@ unsigned long file_size(const char *file_name) {
     unsigned long len;
     FILE *fp = fopen(file_name, "r");
 
-    // checking if the file exist or not
-    if (fp == NULL)
+    // checking if the file exist
+    if (!fp)
         return -1;
 
-    fseek(fp, 0L, SEEK_END);
-
-    // calculating the size of the file
+    fseek(fp, 0, SEEK_END);
+    // calculate the size of the file in bytes
     len = ftell(fp);
 
     fclose(fp);
@@ -42,8 +43,8 @@ char *read_file(const char *filename) {
 
     // open file for reading
     fp = fopen(filename, "r");
-    if (fp == NULL) {
-        printf("Error opening file \"%s\". It may does not exist.\n", filename);
+    if (!fp) {
+        log_error(IO, "Failed to open file " UNDERLINE "%s" RESET RED_B ". It may not exist.", filename);
         exit(1);
     }
 
@@ -51,8 +52,9 @@ char *read_file(const char *filename) {
     flen = file_size(filename);
     content = malloc(flen + 1);
     if (!content) {
-        printf("Error allocating memory\n");
         fclose(fp);
+        log_error(IO, "Failed to allocate memory for file buffer "
+                      "(file path: " UNDERLINE "%s" RESET RED_B ")", filename);
         return NULL;
     }
     content[0] = '\0';

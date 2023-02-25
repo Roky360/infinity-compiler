@@ -15,6 +15,8 @@ char *caller_type_to_str(Caller caller) {
             return "Parser";
         case COMPILER:
             return "Compiler";
+        case IO:
+            return "IO";
         case SEMANTIC_ANALYZER:
             return "Analyzer";
         case CODE_GENERATOR:
@@ -51,6 +53,21 @@ char *get_log_level_color(LogLevel level) {
         case SUCCESS:
             return GREEN_B;
     }
+}
+
+void log_msg(const char *color, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    char *buf = alsprintf(&buf, "%s\n", format);
+#ifdef INF_SHOW_COLORS
+    printf("%s", color);
+#endif
+    vprintf(buf, args);
+#ifdef INF_SHOW_COLORS
+    printf("%s", RESET);
+#endif
+    free(buf);
+    va_end(args);
 }
 
 void new_log_curr_line(const Lexer *lexer, const char *color, unsigned int line, unsigned int col, int mark_length) {
@@ -139,7 +156,16 @@ void log_warning(Caller caller, const char *format, ...) {
     va_end(args);
 }
 
+// logs an error without exiting
 void log_error(Caller caller, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    __log_msg(caller, ERROR, format, args);
+    va_end(args);
+}
+
+// same as log_error, but exist the program
+void log_exception(Caller caller, const char *format, ...) {
     va_list args;
     va_start(args, format);
     __log_msg(caller, ERROR, format, args);

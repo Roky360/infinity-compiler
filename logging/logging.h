@@ -5,6 +5,7 @@
 
 typedef enum Caller {
     COMPILER,
+    IO,
     LEXER,
     PARSER,
     SEMANTIC_ANALYZER,
@@ -25,6 +26,8 @@ char *log_level_to_str(LogLevel level);
 
 char *get_log_level_color(LogLevel level);
 
+void log_msg(const char *color, const char *format, ...);
+
 void new_log_curr_line(const Lexer *lexer, const char *color, unsigned int line, unsigned int col, int mark_length);
 
 void log_success(Caller caller, const char *format, ...);
@@ -37,8 +40,10 @@ void log_warning(Caller caller, const char *format, ...);
 
 void log_error(Caller caller, const char *format, ...);
 
+void log_exception(Caller caller, const char *format, ...);
+
 void log_error_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
-                              const char *format, ...);
+                          const char *format, ...);
 
 void log_exception_with_trace(Caller caller, const Lexer *lexer, unsigned int line, unsigned int col, int mark_length,
                               const char *format, ...);

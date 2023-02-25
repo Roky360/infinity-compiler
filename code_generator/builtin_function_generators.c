@@ -73,8 +73,8 @@ void generate_print(CodeGenerator *generator, AstNode *node) {
             } else if (curr_arg_expr->tokens->size == 1 &&
                        ((ArithmeticToken *) curr_arg_expr->tokens->items[0])->original_tok->type == CHAR) {
                 // print char
-                write_to_file(generator->fp, PUSH, alsprintf(&buf, "dword '%s'",
-                                                             ((ArithmeticToken *) curr_arg_expr->tokens->items[0])->original_tok->value));
+                write_to_file(generator->fp, PUSH, alsprintf(&buf, "dword %d",
+                                                             (int) ((ArithmeticToken *) curr_arg_expr->tokens->items[0])->original_tok->value[0]));
                 write_to_file(generator->fp, CALL, PRINT_CHAR_PROC);
                 free(buf);
             } else {

@@ -6,9 +6,10 @@
 #include "io/io.h"
 
 /*
+ * TODO: handle duplicate variables on different scopes (x0, x1, ...)
  TODO: separate table initializers to files, by module
 */
-int main(int argc, char **argv) {
+int main(int argc, char *argv[]) {
     char *output_path;
     // check that target file is specified
     if (argc < 2) {
