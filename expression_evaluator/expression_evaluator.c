@@ -62,7 +62,6 @@ int is_right_associative(char *op) {
     return strstr(OP_POW OP_NOT, op) != NULL;
 }
 
-// returns if the expression can be parsed to a constant value (1), or it contains variables (0)
 int parse_tokens(List *expression, List *tokens, Lexer *lexer) {
     Token *token;
     ArithmeticToken *arithmeticToken;
@@ -274,11 +273,6 @@ double evaluate_postfix(List *postfix, Lexer *lexer) {
     return result;
 }
 
-/* expression is an address to a list of tokens
- * Returns if the expression can be evaluated, or it contains variables.
- * If it can be evaluated - the result is stored in `res` and returns true
- * If not - `expression` will contain the postfix expression and false is returned
- * */
 int evaluate_expression(List **expression, double *res, Lexer *lexer) {
     List *infix, *postfix;
     if ((*expression)->size == 0)

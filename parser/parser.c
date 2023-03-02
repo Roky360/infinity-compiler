@@ -34,11 +34,6 @@ void parser_handle_unexpected_token(Parser *parser, char *expectations) {
                              expectations);
 }
 
-/*
-Proceeds to the next token, while checking
-that the current token is of the same type as the `type` parameter.
-Returns the current token. parser->token gets the next token.
-*/
 Token *parser_forward(Parser *parser, TokenType type) {
     Token *prev_tok;
 
@@ -51,11 +46,6 @@ Token *parser_forward(Parser *parser, TokenType type) {
     return prev_tok;
 }
 
-/**
- * Moving forward with a list of expected tokens.
- * The `expectations` parameter will be displayed as error message
- * in case the current token doesn't satisfy any of the tokens in the `types` list.
- */
 Token *parser_forward_with_list(Parser *parser, TokenType *types, size_t types_len, char *expectations) {
     int i;
     for (i = 0; i < types_len; i++) {

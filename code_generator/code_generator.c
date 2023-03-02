@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-CodeGenerator *
-init_code_generator(SymbolTable *symbol_table, AstNode *root, AstNode *starting_point, char *target_path) {
+CodeGenerator *init_code_generator(SymbolTable *symbol_table, AstNode *root, AstNode *starting_point, char *target_path,
+                                   Lexer *lexer) {
     CodeGenerator *generator = malloc(sizeof(CodeGenerator));
     if (!generator)
         throw_memory_allocation_error(CODE_GENERATOR);
@@ -19,6 +19,7 @@ init_code_generator(SymbolTable *symbol_table, AstNode *root, AstNode *starting_
     generator->starting_point = starting_point;
     generator->reg_handler = init_register_handler();
     generator->target_path = target_path;
+    generator->lexer = lexer;
 
     return generator;
 }
@@ -31,7 +32,7 @@ void dispose_code_generator(CodeGenerator *generator) {
 void code_generator_generate(CodeGenerator *generator) {
     generator->fp = fopen(generator->target_path, "w");
     if (!generator->fp)
-        log_error(CODE_GENERATOR, "Could not create output file at " UNDERLINE "%s", generator->target_path);
+        log_exception(CODE_GENERATOR, "Could not create output file at " UNDERLINE "%s", generator->target_path);
 
     generate_data_segment(generator);
     generate_bss_segment(generator);
@@ -45,7 +46,6 @@ void generate_data_segment(CodeGenerator *generator) {
     StringSymbol *curr_sym;
     char zero_div_msg[] = "Program terminated because of zero division.";
     int i, j;
-    char *suffix;
 
     write_to_file(generator->fp, SECTION, "data");
     write_to_file(generator->fp, "\tzero_div_msg db %d, \"%s\"\n", ARRLEN(zero_div_msg) - 1, zero_div_msg);
@@ -63,13 +63,13 @@ void generate_data_segment(CodeGenerator *generator) {
         write_to_file(generator->fp, "\t%s db ", curr_sym->symbol_name);
         write_to_file(generator->fp, "%d, ", curr_sym->length); // write string length
         for (j = 0; j < curr_sym->length; j++) {
-            suffix = j == curr_sym->length - 1 ? "\n" : ", ";
             if (strchr("\n\t", curr_sym->value[j])) { // if escape character
-                write_to_file(generator->fp, "%d%s", curr_sym->value[j], suffix);
+                write_to_file(generator->fp, "%d, ", curr_sym->value[j]);
             } else {
-                write_to_file(generator->fp, "'%c'%s", curr_sym->value[j], suffix);
+                write_to_file(generator->fp, "'%c', ", curr_sym->value[j]);
             }
         }
+        write_to_file(generator->fp, "0\n");
     }
     write_to_file(generator->fp, "\n");
 }
@@ -105,6 +105,7 @@ void generate_bss_segment(CodeGenerator *generator) {
 }
 
 void generate_code_segment(CodeGenerator *generator) {
+    char *include_asm_content;
     write_to_file(generator->fp, GLOBAL, ENTRY_POINT_NAME);
     write_to_file(generator->fp, SECTION, "text");
     write_to_file(generator->fp, LABEL_DEF, ENTRY_POINT_NAME);
@@ -125,7 +126,8 @@ void generate_code_segment(CodeGenerator *generator) {
     // generate functions
     generate_block(generator, generator->root->data.compound.children);
     // write helper procedures
-    write_to_file(generator->fp, read_file(INCLUDE_ASM_PATH));
+    write_to_file(generator->fp, include_asm_content = read_file(INCLUDE_ASM_PATH));
+    free(include_asm_content);
 }
 
 char *get_variable_size_prefix(CodeGenerator *generator, char *var_name) {
@@ -167,7 +169,6 @@ void code_generator_apply_assignment(CodeGenerator *generator, DataType var_type
     register_handler_free_register(generator->reg_handler, generator->fp, reg);
 }
 
-// returns whether a return statement has met, for the use of the parent node, if it's a function
 int generate_block(CodeGenerator *generator, List *block) {
     int i, returned = 0;
     for (i = 0; i < block->size; i++) {
@@ -229,7 +230,9 @@ void generate_complicated_arithmetic_expression(CodeGenerator *generator, List *
             right_token = list_pop(stack);
             left_token = list_pop(stack);
             if (!right_token || !left_token) {
-                log_error(CODE_GENERATOR, "Missing operands.");
+                log_exception_with_trace(CODE_GENERATOR, generator->lexer, curr_token->original_tok->line,
+                                         curr_token->original_tok->column, curr_token->original_tok->length,
+                                         "Missing operands.");
             }
 
             applier_func = hash_table_lookup(operator_to_generator_map, curr_token->value.op);
@@ -238,7 +241,9 @@ void generate_complicated_arithmetic_expression(CodeGenerator *generator, List *
                              right_token->type == PLACEHOLDER ? right_token->value.op : "",
                              i == postfix_expr_lst->size - 1);
             } else {
-                log_error(CODE_GENERATOR, "Invalid operator: %s", curr_token->value.op);
+                log_exception_with_trace(CODE_GENERATOR, generator->lexer, curr_token->original_tok->line,
+                                         curr_token->original_tok->column, curr_token->original_tok->length,
+                                         "Invalid operator: %s", curr_token->value.op);
             }
 
             result_token->type = NUMBER;
@@ -248,7 +253,9 @@ void generate_complicated_arithmetic_expression(CodeGenerator *generator, List *
     }
     list_pop(stack); // pop last element - the "result"
     if (!list_is_empty(stack)) {
-        log_error(CODE_GENERATOR, "Invalid expression");
+        log_exception_with_trace(CODE_GENERATOR, generator->lexer, curr_token->original_tok->line,
+                                 curr_token->original_tok->column, curr_token->original_tok->length,
+                                 "Invalid expression");
     }
 
     list_dispose(stack);

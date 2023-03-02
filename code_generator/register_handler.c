@@ -46,13 +46,12 @@ void dispose_register(void *reg) {
     free((Register *) reg);
 }
 
-// returns any available register
 char *register_handler_request_available_register(RegisterHandler *reg_handler, FILE *fp) {
     int i;
     Register *reg;
     for (i = 0; i < REGISTER_COUNT; i++) {
         reg = reg_handler->registers_array[i];
-        if (reg->available) {
+        if (reg->available && !register_handler_is_register_byte(reg->name)) {
             return reg->name;
         }
     }
@@ -62,7 +61,6 @@ char *register_handler_request_available_register(RegisterHandler *reg_handler, 
     return reg->name;
 }
 
-// returns a specific requested register
 char *register_handler_request_register(RegisterHandler *reg_handler, FILE *fp, char *reg_name) {
     Register *reg = (Register *) hash_table_lookup(reg_handler->registers_table, reg_name);
     if (!reg)
@@ -78,7 +76,6 @@ char *register_handler_request_register(RegisterHandler *reg_handler, FILE *fp, 
     return reg->name;
 }
 
-// mark that a register is no longer in use
 void register_handler_free_register(RegisterHandler *reg_handler, FILE *fp, char *reg_name) {
     Register *reg = (Register *) hash_table_lookup(reg_handler->registers_table, reg_name);
     reg->uses -= 1;

@@ -29,22 +29,12 @@ void semantic_analyzer_dispose(SemanticAnalyzer *analyzer) {
     free(analyzer);
 }
 
-/**
- * returns true if the type_b can be casted to type_a
- * */
 int compare_types(DataType type_a, DataType type_b) {
     return type_a == type_b ||
            ((type_b == TYPE_INT || type_b == TYPE_DOUBLE || type_b == TYPE_CHAR || type_b == TYPE_BOOL) &&
             (type_a == TYPE_INT || type_a == TYPE_DOUBLE || type_a == TYPE_CHAR || type_a == TYPE_BOOL));
 }
 
-/* Checks for a valid assignment.
- * - For function calls - not supported
- * - For statements - checks that the types are matching, or can be cast, via the compare_types method.
- * Then, if the target is of type bool, checks that the expression value_node is 0 or 1.
- * Returns the error message according to the error found. If the assignment is valid, returns NULL.
- * Every error message is allocated, so it has to be freed after usage.
- * */
 char *validate_assignment(SemanticAnalyzer *analyzer, DataType type_dst, AstNode *value_node) {
     char *msg;
     DataType value_type = value_node->data.expression.value->type;

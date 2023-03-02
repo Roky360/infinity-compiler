@@ -34,7 +34,7 @@ void compiler_compile(char *src, char *output_path) {
         exit(1);
     }
     // generate code
-    generator = init_code_generator(analyzer->table, root, analyzer->starting_point, output_path);
+    generator = init_code_generator(analyzer->table, root, analyzer->starting_point, output_path, lexer);
     code_generator_generate(generator);
 
 //     Token *tok;

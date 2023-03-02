@@ -72,19 +72,20 @@ void log_msg(const char *color, const char *format, ...) {
 
 void new_log_curr_line(const Lexer *lexer, const char *color, unsigned int line, unsigned int col, int mark_length) {
     unsigned int line_no_len, i = *(int *) lexer->line_offsets->items[line];
+    unsigned int abs_col = i + col;
 
     line_no_len = printf(" %d", line + 1);
     printf(" |  ");
 
     while (lexer->src[i] != '\n' && lexer->src[i] != 0) {
 #ifdef INF_SHOW_COLORS
-        if (i == col)
+        if (i == abs_col)
             // color
             printf("%s", color);
 #endif
         putchar(lexer->src[i++]);
 #ifdef INF_SHOW_COLORS
-        if (i - col == mark_length)
+        if (i - abs_col == mark_length)
             // reset color
             printf(RESET);
 #endif

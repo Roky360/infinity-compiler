@@ -80,10 +80,18 @@
 #define SETL "\tsetl %s\n"
 #define SETLE "\tsetle %s\n"
 
+/// Generates a unique label name and returns it (as new allocated string)
+/// \return Allocated-string of the label name
 char *generate_label();
 
+/// Adds a prefix to a procedure name and returns it
+/// \param proc_name
+/// \return
 char *get_proc_name_formatted(char *proc_name);
 
+/// Adds a prefix to a variable name and returns it
+/// \param var_name
+/// \return
 char *get_var_name_formatted(char *var_name);
 
 #endif //INFINITY_COMPILER_INSTRUCTION_GENERATORS_H

@@ -8,11 +8,11 @@
 typedef struct Lexer {
     char *src;
     size_t src_len;
-    char c;           // current character
-    unsigned int idx; // index of current character
-    unsigned int row; // line number     - for error reporting
-    unsigned int col; // column number   - for error reporting
-    List *line_offsets;
+    char c;             // current character
+    unsigned int idx;   // index of current character
+    unsigned int row;   // line number     - for error reporting
+    unsigned int col;   // column number   - for error reporting
+    List *line_offsets; // for error reporting
 } Lexer;
 
 Lexer *init_lexer(char *src);

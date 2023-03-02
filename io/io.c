@@ -8,11 +8,6 @@
 // Chunk size for reading files
 #define CHUNK_SIZE 128
 
-/*
-Gets the size of the file in bytes.
-Sets the file pointer to the beginning of the file.
-Returns the length of the file.
-*/
 unsigned long file_size(const char *file_name) {
     // opening the file in read mode
     unsigned long len;
@@ -30,10 +25,6 @@ unsigned long file_size(const char *file_name) {
     return len;
 }
 
-/*
-Reads a file in text mode and return its contents as (char *).
-Reads in chunks. CHUNK_SIZE is the size of each chunk.
-*/
 char *read_file(const char *filename) {
     FILE *fp;
     char *content;
@@ -63,7 +54,6 @@ char *read_file(const char *filename) {
     while (fgets(chunk, CHUNK_SIZE - 1, fp) != NULL) {
         strcat(content, chunk);
     }
-
     content[flen] = '\0';
 
     fclose(fp);
@@ -78,7 +68,7 @@ char *get_file_extension(const char *filename) {
 const char *get_file_name(const char *path) {
     const char *p = path + strlen(path) - 1;
     while (*--p != '/' && *p != '\\')
-        if (p == path) // if file name does not contain extension
+        if (p == path) // if file name does not contain slashes
             return path;
     return p + 1;
 }

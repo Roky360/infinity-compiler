@@ -94,9 +94,9 @@ void list_print_integers(const List *list) {
     printf("]\n");
 }
 
-void list_print(const List *list, char *(*print_item)(const void *)) {
+void list_print(const List *list, char *(*item_to_string)(const void *)) {
     printf("[");
     for (int i = 0; i < list->size; i++) {
-        printf("%s%s", print_item(list->items[i]), i == list->size - 1 ? "]\n" : ", ");
+        printf("%s%s", item_to_string(list->items[i]), i == list->size - 1 ? "]\n" : ", ");
     }
 }

@@ -16,9 +16,6 @@ HashTable *init_hash_table(unsigned capacity, void (*dispose_item)(void *item)) 
     return table;
 }
 
-/**
- * Uses the Fowler–Noll–Vo hash function.
-*/
 unsigned int hash_func(HashTable *table, char *id) {
     size_t hash = FNV_offset_basis;
     while (*id) {
