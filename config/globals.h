@@ -10,7 +10,7 @@
 //#define INF_SHOW_COLORS
 
 /** Defines */
-#define INPUT_EXTENSION "txt"
+#define INPUT_EXTENSION "inf"
 #define OUTPUT_EXTENSION "asm"
 
 #define DEFAULT_ROOT_FUNCTION_NAME "main"

@@ -1,0 +1,23 @@
+start hi_there;
+
+func hi_there() -> int {
+    loop i: 6 times {
+        loop i times {
+            print("*");
+        }
+        println();
+    }
+
+    return 0;
+}
+
+func bismach(int num, string str) -> int {
+    int x = 1;
+    int y = 2;
+    println("x = ", x, '\t', "y = ", y);
+    swap x, y;
+    println("x = ", x, '\t', "y = ", y);
+
+    return 10;
+}
+

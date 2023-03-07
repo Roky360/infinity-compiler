@@ -35,7 +35,11 @@ char *read_file(const char *filename) {
     // open file for reading
     fp = fopen(filename, "r");
     if (!fp) {
+#ifdef INF_SHOW_COLORS
         log_error(IO, "Failed to open file " UNDERLINE "%s" RESET RED_B ". It may not exist.", filename);
+#else
+        log_error(IO, "Failed to open file %s. It may not exist.", filename);
+#endif
         exit(1);
     }
 
@@ -44,8 +48,12 @@ char *read_file(const char *filename) {
     content = malloc(flen + 1);
     if (!content) {
         fclose(fp);
+#ifdef INF_SHOW_COLORS
         log_error(IO, "Failed to allocate memory for file buffer "
                       "(file path: " UNDERLINE "%s" RESET RED_B ")", filename);
+#else
+        log_error(IO, "Failed to allocate memory for file buffer (file path: %s)", filename);
+#endif
         return NULL;
     }
     content[0] = '\0';

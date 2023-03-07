@@ -21,7 +21,7 @@ char *read_file(const char *filename);
 char *get_file_extension(const char *filename);
 
 /// Returns file name from a path.
-/// For example: for this input "/files/test.txt", will return "test.txt"
+/// For example: for this input "/files/test.inf", will return "test.inf"
 /// \param path File path
 /// \return File name.
 const char *get_file_name(const char *path);
