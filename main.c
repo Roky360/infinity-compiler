@@ -3,7 +3,6 @@
 #include <string.h>
 #include "config/globals.h"
 #include "compiler/compiler.h"
-#include "options_parser/options_parser.h"
 #include "io/io.h"
 
 /*
@@ -12,11 +11,6 @@
 */
 int main(int argc, char *argv[]) {
     char *output_path;
-    int next_arg;
-
-//    next_arg = parse_options(argc, argv);
-//    if (next_arg == -1)
-//        return 0;
 
     // check that target file is specified
     if (argc < 2) {

@@ -1,12 +1,13 @@
 /* Compound
- * statements that can be outside a function, in the global scope
+* statements that can be outside a function, in the global scope
 */
 <compound> ::= { <compound_statement> }
 <compound_statement> ::= <start> | <function> | <variable_declaration>
 // Start statement
 <start> ::= "start" <identifier> ";"
 // Function Definition
-<function> ::= "func" <identifier> "(" <arguments> ")" [ "->" <return_type> ] ( <block> | <one_liner> )
+<function> ::= "func" <identifier> "(" <arguments> ")" [ "->" <return_type> ] 
+               ( <block> | <one_liner> "," )
 <identifier> ::= [a-zA-Z_][a-zA-Z0-9_]*
 <arguments> ::= [<argument> { "," <argument> }]
 <argument> ::= <type> <identifier>
@@ -17,41 +18,51 @@
 <block> ::= "{" <statements> "}"
 // Statements
 <statements> ::= { <statement> }
-<statement> ::= <expression> ";" | <variable_declaration> | <assignment> | <if_statement> | <while_statement> | <loop_statement> | <return_statement> | <function_call> | <swap_statement>
+<statement> ::= <expression> ";" | <variable_declaration> | <assignment> 
+              | <if_statement> | <while_statement> | <loop_statement> 
+              | <return_statement> | <function_call> | <swap_statement>
 // Variable Declaration
 <variable_declaration> ::= <type> <identifier> [ "=" <expression> ] ";"
 // Assignment
 <assignment> ::= <identifier> "=" <expression> ";"
 // If statement
-<if_statement> ::= "if" "(" <expression> ")" <block> { "else" <if_statement> } [ "else" <block> ]
+<if_statement> ::= "if" "(" <expression> ")" <block> { "else" <if_statement> } 
+                 [ "else" <block> ]
 // While statement
 <while_statement> ::= "while" "(" <expression> ")" <block>
 // Loop statement
-<loop_statement> ::= "loop" ( <expression> "times" | <loop_counter> ":" [<loop_start_expr> "to"] <loop_end_expr> "times" ) <block>
+<loop_statement> ::= "loop" ( <expression> "times" | <loop_counter> ":" 
+                   [<loop_start_expr> "to"] <loop_end_expr> "times" ) <block>
 <loop_counter> ::= <identifier>
 <loop_start_expr> ::= <expression>
 <loop_end_expr> ::= <expression>
 // Return statement
 <return_statement> ::= "return" [ <expression> ] ";"
 // Function Call
-<function_call> ::= <identifier> "(" [<argument_value> { "," <argument_value> }] ")" ";"
+<function_call> ::= <identifier> "(" [<argument_value> { "," <argument_value> }] 
+                    ")" ";"
 <argument_value> ::= <expression>
 // Swap statement
 <swap_statement> ::= "swap" <identifier> "," <identifier> ";"
 // Expressions
-<expression> ::= <literal> | <identifier> | <binary_expression> | <unary_expression> | "(" <expression> ")"
+<expression> ::= <literal> | <identifier> | <binary_expression> 
+               | <unary_expression> | "(" <expression> ")"
 <literal> ::= <int_literal> | <float_literal> | <bool_literal> | <string_literal>
 <int_literal> ::= [0-9]+
 <float_literal> ::= [0-9]* "." [0-9]+
 <bool_literal> ::= "true" | "false"
 <string_literal> ::= '"' <string_content> '"'
 <string_content> ::= { <character> }
-// '\n' means new line character and '\t' means tab
-<character> ::= <any printable ASCII character> | '\n' | '\t'
+// '\n' compiles as the new-line character and '\t' compiles as the tab character
+<character> ::= <any printable ASCII character> | "\n" | "\t"
+
 
 <primary_expression> ::= <identifier> | <literal> | "(" <expression> ")"
 <binary_expression> ::= <primary_expression> <binary_operator> <primary_expression>
-<unary_expression> ::= <unary_operator> <primary_expression>
+<unary_expression> ::= <prefix_unary_op> <primary_expression> 
+                     | <primary_expression> <postfix_unary_op>
 // Operators
-<binary_operator> ::= "+" | "-" | "*" | "/" | "^" | "%" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "and" | "or"
-<unary_operator> ::= "-" | "not" | "!"  // "!" is the factorial operator
+<binary_operator> ::= "+" | "-" | "*" | "/" | "^" | "%" | "==" | "!=" | "<" | "<=" 
+                    | ">" | ">=" | "and" | "or"
+<prefix_unary_op> ::= "-" | "not"
+<postfix_unary_op> ::= "!"  // the factorial operator

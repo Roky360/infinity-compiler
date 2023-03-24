@@ -1,7 +1,10 @@
 start hi_there;
 
 func hi_there() -> int {
-    loop i: 6 times {
+    int x = 5;
+    println("this statement is \n\t\t", x > 10 or x == 6);
+
+    loop i: 1 to 6 times {
         loop i times {
             print("*");
         }

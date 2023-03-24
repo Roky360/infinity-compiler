@@ -104,7 +104,8 @@ int semantic_analyze_tree(SemanticAnalyzer *analyzer) {
     starting_point_entry = symbol_table_lookup(analyzer->table, analyzer->root_func_name);
     if (starting_point_entry != NULL) {
         if (starting_point_entry->type != FUNCTION) { // if the starting point is not a function
-            log_error(SEMANTIC_ANALYZER, "Entry point should be a function (%s isn't a function).", analyzer->root_func_name);
+            log_error(SEMANTIC_ANALYZER, "Entry point should be a function (%s isn't a function).",
+                      analyzer->root_func_name);
             analyzer->error_count += 1;
         } else {
             analyzer->starting_point = starting_point_entry->initializer;
@@ -205,6 +206,7 @@ void semantic_analyze_statement(SemanticAnalyzer *analyzer, AstNode *node, AstNo
  * */
 void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, DataType target_type) {
     int i;
+    char *curr_id;
     ArithmeticToken *curr_arith_tok;
     Token *curr_tok;
     // if expression is void
@@ -230,7 +232,7 @@ void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, D
         for (i = 0; i < expr->tokens->size; i++) {
             curr_arith_tok = expr->tokens->items[i];
             // check for a value that is not defined
-            if (curr_arith_tok->type == ID &&
+            if (curr_arith_tok->type == VAR &&
                 scope_stack_lookup(analyzer->scope_stack, curr_arith_tok->value.var) == NULL) {
                 log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_arith_tok->original_tok->line,
                                      curr_arith_tok->original_tok->column,
@@ -238,19 +240,30 @@ void semantic_analyze_expression(SemanticAnalyzer *analyzer, Expression *expr, D
                                      "Target variable '%s' is not defined in the current scope. Try declaring it before usage: <variable_type> %s;",
                                      curr_arith_tok->value, curr_arith_tok->value);
                 analyzer->error_count += 1;
-                continue;
             }
-            if (target_type == STRING) {
+                // if there is function name inside an expression
+            else if (curr_arith_tok->type == VAR &&
+                     symbol_table_lookup(analyzer->table, curr_arith_tok->value.var)->type == FUNCTION) {
                 log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_arith_tok->original_tok->line,
                                      curr_arith_tok->original_tok->column,
                                      curr_arith_tok->original_tok->length,
-                                     "%s cannot be assigned to a string variable",
-                                     data_type_to_str(target_type), data_type_to_str(target_type));
-                analyzer->error_count += 1;
-            }
-            if (curr_arith_tok->type == VAR &&
-                symbol_table_lookup(analyzer->table, curr_arith_tok->value.var)->value.var_symbol.type == TYPE_STRING) {
-                expr->value->type = TYPE_STRING;
+                                     "Functions cannot be in an expression.",
+                                     curr_arith_tok->value, curr_arith_tok->value);
+
+            } else {
+                if (target_type == STRING) {
+                    log_error_with_trace(SEMANTIC_ANALYZER, analyzer->lexer, curr_arith_tok->original_tok->line,
+                                         curr_arith_tok->original_tok->column,
+                                         curr_arith_tok->original_tok->length,
+                                         "%s cannot be assigned to a string variable",
+                                         data_type_to_str(target_type), data_type_to_str(target_type));
+                    analyzer->error_count += 1;
+                }
+                if (curr_arith_tok->type == VAR &&
+                    symbol_table_lookup(analyzer->table, curr_arith_tok->value.var)->value.var_symbol.type ==
+                    TYPE_STRING) {
+                    expr->value->type = TYPE_STRING;
+                }
             }
         }
     }
